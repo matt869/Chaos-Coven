@@ -1,0 +1,129 @@
+# The Vanishing
+# The worker (the orders queue consumer) stops without a sound. Nothing errors and
+# the storefront stays green, but the orders queue grows because nobody consumes it.
+
+id: the-vanishing
+name: The Vanishing
+difficulty: easy
+target: worker
+
+page:
+  alert: "Support ticket spike: customers say they paid, but their orders never get confirmed."
+  narration: "The storefront smiles and takes every order. Somewhere deeper in the house, those orders are not being finished."
+
+fault:
+  type: docker
+  params:
+    service: worker
+    action: stop
+
+escalation:
+  - step: 1
+    afterSeconds: 300
+    narration: "The orders queue keeps getting deeper. Nothing is taking from it."
+    faults: []
+  - step: 2
+    # The broker hits its memory limit and blocks publishers (flow control), so
+    # the storefront's publish to the queue slows down and checkout latency rises.
+    afterSeconds: 600
+    narration: "The queue is full, and now it pushes back. Checkout waits on every publish."
+    faults:
+      - type: toxiproxy
+        params:
+          proxy: storefront_queue
+          toxic: latency
+          stream: upstream
+          latency: 1500
+          jitter: 250
+
+signals:
+  - id: queue-depth-rising
+    kind: symptom
+    description: Orders queue depth climbs steadily because nothing consumes it.
+    source: prometheus
+    query: 'sum(witching_queue_depth{queue="orders"})'
+    expect: { op: ">", value: 100 }
+  - id: worker-throughput-zero
+    kind: cause
+    description: The worker has processed no jobs recently.
+    source: prometheus
+    query: "sum(rate(witching_worker_jobs_processed_total[2m]))"
+    emptyValue: 0
+    expect: { op: "==", value: 0 }
+  - id: worker-target-down
+    kind: cause
+    description: Prometheus can no longer scrape the worker.
+    source: prometheus
+    query: 'sum(up{job="worker"})'
+    emptyValue: 0
+    expect: { op: "==", value: 0 }
+  - id: worker-logs-silent
+    kind: cause
+    description: The worker has written no log lines at all. It did not crash loudly, it went quiet.
+    source: loki
+    query: 'sum(count_over_time({service="worker"}[2m]))'
+    emptyValue: 0
+    expect: { op: "==", value: 0 }
+  - id: storefront-errors-normal
+    kind: red-herring
+    description: Storefront 5xx rate stays near zero, so the front of the house looks healthy.
+    source: prometheus
+    query: 'sum(rate(http_requests_total{service="storefront",code=~"5.."}[2m]))'
+    emptyValue: 0
+    expect: { op: "<", value: 0.05 }
+  - id: checkout-latency-high
+    kind: symptom
+    description: After escalation step 2, storefront checkout p99 goes above 1s because publishes to the full queue are blocked.
+    source: prometheus
+    query: 'histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket{service="storefront",route="/checkout"}[2m])))'
+    expect: { op: ">", value: 1 }
+
+verify:
+  - id: worker-up
+    description: Prometheus can scrape at least one worker.
+    source: prometheus
+    query: 'sum(up{job="worker"})'
+    emptyValue: 0
+    expect: { op: ">=", value: 1 }
+  - id: worker-consuming
+    description: The worker is processing jobs again.
+    source: prometheus
+    query: "sum(rate(witching_worker_jobs_processed_total[1m]))"
+    emptyValue: 0
+    expect: { op: ">", value: 0 }
+  - id: queue-draining
+    description: Orders queue depth is going down or holding steady, not growing.
+    source: prometheus
+    query: 'sum(deriv(witching_queue_depth{queue="orders"}[2m]))'
+    expect: { op: "<=", value: 0 }
+
+rootCause:
+  component: worker
+  summary: The worker container that consumes the orders queue was stopped. Orders pile up in the queue while the storefront keeps accepting them.
+  keywords:
+    - [stopped, down, not running, dead, crashed, exited, died, gone, vanished]
+    - [queue, backlog, consum, orders]
+  minKeywordMatches: 2
+
+fix:
+  summary: Start the worker again, or scale it up, so it drains the orders queue.
+  actions:
+    - haunt restart worker
+    - haunt scale worker 2
+
+harmfulActions:
+  - action: haunt purge-queue orders
+    penalty: 30
+    reason: Purging the orders queue deletes orders customers already paid for. The backlog is the work, not the problem.
+  - action: haunt restart postgres
+    penalty: 15
+    reason: Postgres was healthy. Restarting it takes cart and payments down with it.
+  - action: haunt restart storefront
+    penalty: 10
+    reason: The storefront was healthy. Restarting it drops in-flight checkouts and fixes nothing.
+  - action: haunt restart payments
+    penalty: 10
+    reason: Payments was healthy. Restarting it fails in-flight payments and fixes nothing.
+
+scoring:
+  detectParSeconds: 300

@@ -1,0 +1,301 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://witching-hour.local/schemas/haunting.json",
+  "title": "Haunting",
+  "description": "A fault scenario the engine injects into the Witching Hour sandbox. Every fault type here has a matching revert in engine/src/faults.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "name",
+    "difficulty",
+    "target",
+    "page",
+    "fault",
+    "escalation",
+    "signals",
+    "verify",
+    "rootCause",
+    "fix",
+    "harmfulActions",
+    "scoring"
+  ],
+  "properties": {
+    "id": {
+      "description": "Must match the file name without .yaml.",
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "maxLength": 64
+    },
+    "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+    "difficulty": { "enum": ["easy", "medium", "hard"] },
+    "target": { "$ref": "#/definitions/service" },
+    "page": {
+      "description": "What the player receives when the haunting starts.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["alert", "narration"],
+      "properties": {
+        "alert": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "narration": { "$ref": "#/definitions/narration" }
+      }
+    },
+    "fault": { "$ref": "#/definitions/fault" },
+    "escalation": {
+      "description": "Steps applied in order by escalate(id, step). Steps are numbered from 1 and afterSeconds must increase.",
+      "type": "array",
+      "maxItems": 10,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["step", "afterSeconds", "narration", "faults"],
+        "properties": {
+          "step": { "type": "integer", "minimum": 1 },
+          "afterSeconds": { "type": "integer", "minimum": 0, "maximum": 3600 },
+          "narration": { "$ref": "#/definitions/narration" },
+          "faults": {
+            "type": "array",
+            "maxItems": 5,
+            "items": { "$ref": "#/definitions/fault" }
+          }
+        }
+      }
+    },
+    "signals": {
+      "description": "Evidence the player can find. Never shown to the player directly.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "kind", "description", "source", "query", "expect"],
+        "properties": {
+          "id": { "$ref": "#/definitions/slug" },
+          "kind": { "enum": ["symptom", "cause", "red-herring"] },
+          "description": { "type": "string", "minLength": 1 },
+          "source": { "$ref": "#/definitions/source" },
+          "query": { "type": "string", "minLength": 1 },
+          "expect": { "$ref": "#/definitions/comparison" },
+          "emptyValue": { "$ref": "#/definitions/emptyValue" }
+        }
+      }
+    },
+    "verify": {
+      "description": "Health checks that must all pass for the fix to count as verified.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "description", "source", "query", "expect"],
+        "properties": {
+          "id": { "$ref": "#/definitions/slug" },
+          "description": { "type": "string", "minLength": 1 },
+          "source": { "$ref": "#/definitions/source" },
+          "query": { "type": "string", "minLength": 1 },
+          "expect": { "$ref": "#/definitions/comparison" },
+          "emptyValue": { "$ref": "#/definitions/emptyValue" }
+        }
+      }
+    },
+    "rootCause": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["component", "summary", "keywords", "minKeywordMatches"],
+      "properties": {
+        "component": { "$ref": "#/definitions/service" },
+        "summary": { "type": "string", "minLength": 1 },
+        "keywords": {
+          "description": "Groups of synonyms. A group matches when any of its words appears in the player's diagnosis.",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "minLength": 1 }
+          }
+        },
+        "minKeywordMatches": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "fix": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["summary", "actions"],
+      "properties": {
+        "summary": { "type": "string", "minLength": 1 },
+        "actions": {
+          "description": "Terminal commands that fix the haunting. The fix still only counts once verify passes.",
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/definitions/command" }
+        }
+      }
+    },
+    "harmfulActions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["action", "penalty", "reason"],
+        "properties": {
+          "action": { "$ref": "#/definitions/command" },
+          "penalty": { "type": "integer", "minimum": 1, "maximum": 100 },
+          "reason": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "scoring": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["detectParSeconds"],
+      "properties": {
+        "detectParSeconds": {
+          "description": "Detecting within this time earns full detection points.",
+          "type": "integer",
+          "minimum": 30,
+          "maximum": 3600
+        }
+      }
+    }
+  },
+  "definitions": {
+    "slug": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$", "maxLength": 64 },
+    "service": { "enum": ["storefront", "cart", "payments", "worker", "postgres", "queue"] },
+    "appService": {
+      "description": "Services that expose the /__admin and /__debug endpoints.",
+      "enum": ["storefront", "cart", "payments", "worker"]
+    },
+    "narration": {
+      "description": "Ghost voice: spooky but precise, at most 2 sentences. See .kiro/steering/ghost-voice.md.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 280
+    },
+    "source": { "enum": ["prometheus", "loki"] },
+    "comparison": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "value"],
+      "properties": {
+        "op": { "enum": [">", ">=", "<", "<=", "==", "!="] },
+        "value": { "type": "number" }
+      }
+    },
+    "emptyValue": {
+      "description": "Value to use when the query returns no series (for example, no logs at all means 0).",
+      "type": "number"
+    },
+    "command": {
+      "type": "string",
+      "pattern": "^haunt( [a-z0-9_.:=-]+)+$",
+      "maxLength": 120
+    },
+    "fault": {
+      "oneOf": [
+        { "$ref": "#/definitions/toxiproxyFault" },
+        { "$ref": "#/definitions/dockerFault" },
+        { "$ref": "#/definitions/configFault" },
+        { "$ref": "#/definitions/debugEndpointFault" }
+      ]
+    },
+    "toxiproxyFault": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "params"],
+      "properties": {
+        "type": { "const": "toxiproxy" },
+        "params": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["proxy", "toxic", "latency"],
+              "properties": {
+                "proxy": { "$ref": "#/definitions/proxyName" },
+                "toxic": { "const": "latency" },
+                "stream": { "$ref": "#/definitions/stream" },
+                "toxicity": { "$ref": "#/definitions/toxicity" },
+                "latency": { "type": "integer", "minimum": 1, "maximum": 30000 },
+                "jitter": { "type": "integer", "minimum": 0, "maximum": 10000 }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["proxy", "toxic", "timeout"],
+              "properties": {
+                "proxy": { "$ref": "#/definitions/proxyName" },
+                "toxic": { "const": "timeout" },
+                "stream": { "$ref": "#/definitions/stream" },
+                "toxicity": { "$ref": "#/definitions/toxicity" },
+                "timeout": { "type": "integer", "minimum": 0, "maximum": 60000 }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "proxyName": { "type": "string", "pattern": "^[a-z0-9]+(_[a-z0-9]+)*$", "maxLength": 64 },
+    "stream": { "enum": ["upstream", "downstream"] },
+    "toxicity": { "type": "number", "minimum": 0, "maximum": 1 },
+    "dockerFault": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "params"],
+      "properties": {
+        "type": { "const": "docker" },
+        "params": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["service", "action"],
+          "properties": {
+            "service": { "$ref": "#/definitions/service" },
+            "action": { "enum": ["stop", "pause"] }
+          }
+        }
+      }
+    },
+    "configFault": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "params"],
+      "properties": {
+        "type": { "const": "config" },
+        "params": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["service", "key", "value"],
+          "properties": {
+            "service": { "$ref": "#/definitions/appService" },
+            "key": { "type": "string", "pattern": "^[a-z0-9]+([._][a-z0-9]+)*$", "maxLength": 64 },
+            "value": { "type": ["string", "number", "boolean"] }
+          }
+        }
+      }
+    },
+    "debugEndpointFault": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "params"],
+      "properties": {
+        "type": { "const": "debug-endpoint" },
+        "params": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["service", "toggle"],
+          "properties": {
+            "service": { "$ref": "#/definitions/appService" },
+            "toggle": { "$ref": "#/definitions/slug" },
+            "settings": {
+              "type": "object",
+              "maxProperties": 10,
+              "propertyNames": { "pattern": "^[a-zA-Z0-9_]+$" },
+              "additionalProperties": { "type": ["string", "number", "boolean"] }
+            }
+          }
+        }
+      }
+    }
+  }
+}

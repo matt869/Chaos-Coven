@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "witching-engine": {
+      "command": "node",
+      "args": ["engine/dist/mcp/server.js"],
+      "env": {
+        "WH_COMPOSE_PROJECT": "witching-hour-sandbox"
+      },
+      "disabled": false,
+      "autoApprove": ["list_hauntings", "verify_haunting", "haunting_signals"]
+    }
+  }
+}
