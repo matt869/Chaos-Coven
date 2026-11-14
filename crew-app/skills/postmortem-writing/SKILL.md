@@ -1,6 +1,8 @@
 ---
 name: postmortem-writing
 description: How to write a blameless team postmortem from Witching Hour drill results. Use after a drill has finished and every player's postmortem is available.
+triggers: [postmortem, debrief, results, retro]
+always: false
 ---
 
 # Writing a drill postmortem

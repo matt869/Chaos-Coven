@@ -13,6 +13,8 @@ export interface AppOptions {
   grafanaUrl: string;
   /** Built UIs to serve, if present: the player UI at /, Daemonwatch at /daemonwatch/. */
   staticDirs?: { web?: string; daemonwatch?: string };
+  /** Serves MCP at /mcp when set. See ../mcp/http-mcp.ts. */
+  mcp?: (req: IncomingMessage, res: ServerResponse, body: unknown) => Promise<void>;
 }
 
 class HttpError extends Error {
@@ -166,6 +168,10 @@ export function createApp(opts: AppOptions): Server {
         res.end(JSON.stringify(body));
       };
       try {
+        if (url.pathname === '/mcp' && opts.mcp) {
+          const body = method === 'POST' ? await readJson(req) : undefined;
+          return await opts.mcp(req, res, body);
+        }
         if (url.pathname.startsWith('/api/')) {
           for (const r of routes) {
             if (r.method !== method) continue;

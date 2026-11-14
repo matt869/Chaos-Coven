@@ -6,10 +6,11 @@
   "description": "Daemonwatch: schedule Witching Hour drills for a team and review their postmortems.",
   "scripts": {
     "dev": "vite --port 5174",
-    "build": "tsc -p tsconfig.json --noEmit && vite build",
+    "build": "tsc -p tsconfig.json --noEmit && vite build && vite build -c vite.crew.config.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "build:crew": "vite build -c vite.crew.config.ts"
   },
   "dependencies": {
     "react": "^19.3.1",

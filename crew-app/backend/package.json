@@ -1,0 +1,15 @@
+{
+  "name": "@witching-hour/daemonwatch-backend",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "description": "Daemonwatch Crew App backend: verifies Crew proxy signatures and forwards drill calls to the game server. No runtime dependencies.",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node src/server.mjs",
+    "test": "vitest run",
+    "check:manifest": "node ../scripts/check-manifest.mjs"
+  }
+}

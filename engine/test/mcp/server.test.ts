@@ -67,3 +67,18 @@ describe('MCP server', () => {
     expect(r.isError).toBe(true);
   });
 });
+
+describe('MCP server apply guard', () => {
+  it('refuses apply_haunting when the guard gives a reason', async () => {
+    const r = fakeEngine([loadRepoHaunting('the-vanishing')]);
+    sandbox = r.sandbox;
+    const server = createMcpServer(r.engine, { beforeApply: () => 'a player session owns the sandbox' });
+    const [clientT, serverT] = InMemoryTransport.createLinkedPair();
+    await server.connect(serverT);
+    const client = new Client({ name: 'test', version: '0.0.0' });
+    await client.connect(clientT);
+    const res = await client.callTool({ name: 'apply_haunting', arguments: { id: 'the-vanishing' } });
+    expect(res.isError).toBe(true);
+    expect(r.engine.list()[0]!.active).toBe(false);
+  });
+});

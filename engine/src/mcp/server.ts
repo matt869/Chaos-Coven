@@ -21,8 +21,16 @@ async function run(fn: () => unknown): Promise<ToolResult> {
 
 const hauntingId = z.string().regex(/^[a-z0-9]+(-[a-z0-9]+)*$/).describe('Haunting id, for example "the-vanishing"');
 
+export interface McpServerOptions {
+  /**
+   * Called before apply_haunting. Return a reason to refuse, for example because a
+   * player session already owns the sandbox.
+   */
+  beforeApply?: (id: string) => string | undefined;
+}
+
 /** Exposes the engine API as MCP tools. */
-export function createMcpServer(engine: Engine): McpServer {
+export function createMcpServer(engine: Engine, opts: McpServerOptions = {}): McpServer {
   const server = new McpServer({ name: 'witching-hour-engine', version: '0.1.0' });
 
   server.registerTool(
@@ -42,7 +50,12 @@ export function createMcpServer(engine: Engine): McpServer {
         'Injects the haunting\'s base fault into the sandbox and returns the page sent to the player. Applying an active haunting again changes nothing.',
       inputSchema: { id: hauntingId },
     },
-    ({ id }) => run(() => engine.apply(id)),
+    ({ id }) =>
+      run(() => {
+        const refusal = opts.beforeApply?.(id);
+        if (refusal !== undefined) throw new Error(refusal);
+        return engine.apply(id);
+      }),
   );
 
   server.registerTool(

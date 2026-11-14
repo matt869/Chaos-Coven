@@ -16,8 +16,10 @@
   },
   "dependencies": {
     "@anthropic-ai/bedrock-sdk": "^1.1.2",
+    "@modelcontextprotocol/sdk": "^1.32.2",
     "@witching-hour/engine": "0.1.0",
-    "ws": "^8.23.0"
+    "ws": "^8.23.0",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/ws": "^8.18.2"

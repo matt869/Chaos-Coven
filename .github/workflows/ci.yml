@@ -25,6 +25,8 @@ jobs:
       - run: npm ci
       - name: Validate hauntings
         run: npm run validate:hauntings
+      - name: Check the Crew App manifest
+        run: npm run check:crew-manifest
       - name: Build engine
         run: npm run build -w engine
       - name: Typecheck

@@ -41,6 +41,10 @@
     "./testing": {
       "types": "./dist/testing/fake-sandbox.d.ts",
       "default": "./dist/testing/fake-sandbox.js"
+    },
+    "./mcp": {
+      "types": "./dist/mcp/server.d.ts",
+      "default": "./dist/mcp/server.js"
     }
   },
   "files": [

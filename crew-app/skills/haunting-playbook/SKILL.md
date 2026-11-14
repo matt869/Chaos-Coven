@@ -1,6 +1,8 @@
 ---
 name: haunting-playbook
 description: How to choose, run, escalate and clean up a Witching Hour haunting for a drill. Use when scheduling or running a drill with the witching-engine MCP tools.
+triggers: [drill, haunting, apply, escalate, revert, sandbox]
+always: false
 ---
 
 # Haunting playbook
@@ -24,6 +26,16 @@ description: How to choose, run, escalate and clean up a Witching Hour haunting 
 3. Escalate on the haunting's schedule (`afterSeconds` for each step) with `escalate_haunting`. The game server does this automatically for normal sessions.
 4. When the player says they fixed it, `verify_haunting`. Report pass/fail and which checks failed, without naming the root cause.
 5. Always finish with `revert_haunting`, even if the player gave up. If it fails, retry once, then stop and report.
+
+## The weekday drills cron
+
+At 09:00 on weekdays you get a message to run the day's drills:
+
+1. `list_drills` with today's date (UTC, `YYYY-MM-DD`).
+2. For each drill, rehearse its haunting so it's ready for the players: `apply_haunting`, wait a minute, `haunting_signals` to confirm the symptom and cause signals match, then `revert_haunting`. If `apply_haunting` says a player session is using the sandbox, skip the rehearsal and say so.
+3. `drill_results` for each drill, for results recorded so far.
+4. Post one summary: drills due today (team, haunting, players), whether each rehearsal was clean, and results so far. Never include root causes in a post players can see.
+5. Finish with `list_hauntings` and confirm nothing is active.
 
 ## What never to do
 

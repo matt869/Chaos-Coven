@@ -44,6 +44,8 @@ npm run dev:server         # game server on http://127.0.0.1:4000
 
 Then open **http://127.0.0.1:4000**, pick a haunting, and start your shift. Daemonwatch is at **http://127.0.0.1:4000/daemonwatch/**, and Grafana at **http://127.0.0.1:3000**.
 
+To add Daemonwatch to a running Kiro Crew, see [crew-app/README.md](crew-app/README.md) (`POST /api/apps/install {"source": "./crew-app"}`).
+
 To work on the UIs with hot reload, run `npm run dev:web` (port 5173) or `npm run dev:daemonwatch` (port 5174) alongside the server.
 
 When you're done: `npm run sandbox:down`.
@@ -96,7 +98,7 @@ Some of these are traps. Purging the orders queue, for example, deletes orders c
 | [`sandbox/`](sandbox/) | The haunted shop (storefront, cart, payments, worker, a traffic generator) with Postgres, a Redis queue, Toxiproxy between every hop, Prometheus, Loki and a provisioned Grafana dashboard. |
 | [`server/`](server/) | Game API and WebSocket terminal, sessions with escalation timers, the narrator, postmortems, and the drills API for Daemonwatch. |
 | [`web/`](web/) | The player UI: page, narration, embedded Grafana, xterm.js terminal, diagnosis, verify, postmortem. |
-| [`crew-app/`](crew-app/) | Daemonwatch: the Crew App manifest, the Ghost Director and Medium agents, their skills, and the UI. |
+| [`crew-app/`](crew-app/) | Daemonwatch, a self-contained Kiro Crew App: manifest, Ghost Director and Medium agents, skills, a weekday drill cron, the dashboard page (plus the standalone page) and a signed-proxy backend. Its agents use the engine's MCP tools over HTTP at `/mcp` on the game server (loopback only). |
 | [`.kiro/`](.kiro/) | Steering, the haunting-engine spec, hooks, agents and MCP settings. |
 | [`docs/`](docs/) | [Writeup](docs/writeup.md), [playtest plan](docs/playtests.md), [Kiro journal](docs/kiro-journal.md). |
 
@@ -123,6 +125,7 @@ Every workspace has unit tests. Core guarantees are [fast-check](https://fast-ch
 - **Engine:** apply then revert returns to baseline; apply is idempotent; any two hauntings revert cleanly in any order; harmful actions never raise a score.
 - **Server:** the terminal parser never accepts shell metacharacters and only produces allowlisted commands; the narration guard never lets through more than 2 sentences or an invented service or number.
 - **Sandbox services:** the DB connection limiter never admits work beyond its current limit, even while it's being resized.
+- **Daemonwatch:** the backend accepts a correctly signed proxy request and rejects any change to its body, path, method or timestamp, and any timestamp outside ±60s; no path in `app.json` is absolute or escapes `crew-app/`.
 
 Engine property tests run against an in-memory fake sandbox that implements the same interfaces as the real clients. To run property 1 against the real sandbox, use `WH_SANDBOX=1 npx vitest run test/integration` from `engine/`.
 
@@ -134,6 +137,7 @@ Built and tested: the engine, three hauntings, the sandbox definition, the game 
 
 - The sandbox has been validated (`docker compose config`) but not yet run end to end, and the real-sandbox integration test is still to run. CI builds the image.
 - No playtests yet ([plan](docs/playtests.md)).
+- Daemonwatch hasn't been installed into a real Crew yet, and `kirocrew doctor` hasn't been run on it. A few Crew details the docs leave open are listed in [crew-app/README.md](crew-app/README.md).
 - `infra/` (AWS deployment and IAM roles) is not built.
 
 ## Out of scope

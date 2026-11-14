@@ -6,3 +6,8 @@ dist/
 engine/.witching/
 # Game server data (drills)
 server/.data/
+# The Crew dashboard bundle is committed: Crew copies the app folder, it does not build it.
+!crew-app/ui/dist/
+crew-app/ui/dist/standalone/
+# Crew writes the app secret next to the installed app
+.app_secret

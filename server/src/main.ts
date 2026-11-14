@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { createSandboxEngine, loadConfig } from '@witching-hour/engine';
 import { DrillStore } from './drills/drills.js';
 import { createApp } from './http/app.js';
+import { createMcpHttpHandler } from './mcp/http-mcp.js';
 import { BedrockNarrator, StaticNarrator, type Narrator } from './narrator/bedrock.js';
 import { SessionManager } from './session/session.js';
 import { HttpObservability } from './terminal/observability.js';
@@ -41,10 +42,14 @@ const sessions = new SessionManager({
 });
 
 const webDist = resolve(ROOT, 'web/dist');
-const daemonwatchDist = resolve(ROOT, 'crew-app/ui/dist');
+// The standalone Daemonwatch page; crew-app/ui/dist/index.mjs is the Crew bundle.
+const daemonwatchDist = resolve(ROOT, 'crew-app/ui/dist/standalone');
+const port = Number(env.PORT ?? 4000);
+const drills = new DrillStore(resolve(env.WH_DATA_DIR ?? resolve(ROOT, 'server/.data'), 'drills.json'));
 const app = createApp({
   sessions,
-  drills: new DrillStore(resolve(env.WH_DATA_DIR ?? resolve(ROOT, 'server/.data'), 'drills.json')),
+  drills,
+  mcp: createMcpHttpHandler({ engine, sessions, drills, port }),
   grafanaUrl: env.WH_GRAFANA_URL ?? 'http://127.0.0.1:3000',
   staticDirs: {
     web: existsSync(webDist) ? webDist : undefined,
@@ -52,9 +57,8 @@ const app = createApp({
   },
 });
 
-const port = Number(env.PORT ?? 4000);
 // Loopback only: the server can restart sandbox containers.
-app.listen(port, '127.0.0.1', () => log(`listening on http://127.0.0.1:${port} with ${engine.list().length} haunting(s), narrator: ${env.WH_NARRATOR === 'bedrock' ? 'bedrock' : 'static'}`));
+app.listen(port, '127.0.0.1', () => log(`listening on http://127.0.0.1:${port} with ${engine.list().length} haunting(s), MCP at /mcp, narrator: ${env.WH_NARRATOR === 'bedrock' ? 'bedrock' : 'static'}`));
 
 let stopping = false;
 const shutdown = async (signal: string) => {

@@ -1,28 +1,70 @@
 {
   "name": "daemonwatch",
+  "version": "0.2.0",
   "displayName": "Daemonwatch",
-  "version": "0.1.0",
   "description": "Schedule Witching Hour on-call drills for a team, run them in the shared sandbox, and review every player's scored postmortem.",
-  "agents": [
-    { "name": "ghost-director", "config": "agents/ghost-director.json" },
-    { "name": "medium", "config": "agents/medium.json" }
-  ],
-  "skills": [
-    { "name": "haunting-playbook", "path": "skills/haunting-playbook/SKILL.md" },
-    { "name": "postmortem-writing", "path": "skills/postmortem-writing/SKILL.md" }
-  ],
+  "author": "matt869",
+  "license": "MIT",
+  "tags": ["on-call", "incident-response", "training", "sre"],
+  "agents": ["agents/ghost-director.json", "agents/medium.json"],
+  "skills": ["skills/haunting-playbook", "skills/postmortem-writing", "skills/sandbox-safety", "skills/ghost-voice"],
   "mcpServers": {
     "witching-engine": {
-      "command": "node",
-      "args": ["engine/dist/mcp/server.js"],
-      "env": { "WH_COMPOSE_PROJECT": "witching-hour-sandbox" }
+      "url": "http://127.0.0.1:4000/mcp"
     }
   },
+  "crons": [
+    {
+      "name": "weekday-drills",
+      "cron_expr": "0 9 * * 1-5",
+      "agent": "ghost-director",
+      "message": "Run today's Daemonwatch drills. Use the haunting-playbook skill: list today's drills with list_drills (today's date in UTC), rehearse each drill's haunting in the sandbox (apply, check its signals, then always revert), and post a summary: which drills are due today and for whom, whether each haunting rehearsed cleanly, and results recorded so far with drill_results. Never leave a haunting applied.",
+      "enabled": true
+    }
+  ],
   "ui": {
-    "path": "ui",
-    "build": "npm run build -w crew-app/ui",
-    "dist": "ui/dist",
-    "servedAt": "/daemonwatch/",
-    "api": "http://127.0.0.1:4000/api"
+    "entry": "ui/dist/index.mjs",
+    "pages": [
+      {
+        "route": "/apps/daemonwatch",
+        "label": "Daemonwatch",
+        "icon": "Ghost"
+      }
+    ]
+  },
+  "backend": {
+    "type": "node",
+    "entryPoint": "backend/src/server.mjs",
+    "port": "auto",
+    "healthCheck": "/health"
+  },
+  "permissions": {
+    "api": ["/apps/daemonwatch/api/"],
+    "mcpTools": [
+      "list_hauntings",
+      "apply_haunting",
+      "escalate_haunting",
+      "verify_haunting",
+      "revert_haunting",
+      "revert_all_hauntings",
+      "haunting_signals",
+      "list_drills",
+      "drill_results"
+    ],
+    "cron": true
+  },
+  "setup": {
+    "onInstall": "cd ui && if [ ! -f dist/index.mjs ]; then npm install --no-audit --no-fund && npm run build:crew; fi",
+    "onUpdate": "cd ui && if [ ! -f dist/index.mjs ]; then npm install --no-audit --no-fund && npm run build:crew; fi",
+    "configSchema": {
+      "type": "object",
+      "properties": {
+        "gameServerUrl": {
+          "type": "string",
+          "description": "The Witching Hour game server. Must be on this machine (it binds 127.0.0.1). The backend reads it from DAEMONWATCH_GAME_SERVER_URL.",
+          "default": "http://127.0.0.1:4000"
+        }
+      }
+    }
   }
 }

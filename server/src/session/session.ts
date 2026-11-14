@@ -124,6 +124,8 @@ export class SessionManager extends EventEmitter {
     } catch {
       throw new SessionError(404, `unknown haunting "${hauntingId}"`);
     }
+    const busy = this.opts.engine.list().find((h) => h.active);
+    if (busy !== undefined) throw new SessionError(409, 'a haunting started by an agent is running in the sandbox. Wait for it to be reverted.');
     const id = randomUUID();
     this.activeId = id; // claim the sandbox before awaiting
     try {
