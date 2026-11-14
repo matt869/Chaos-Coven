@@ -25,5 +25,5 @@ docs/           Writeup, playtest notes, Kiro journal
 - **Sandbox services and limits** live in `sandbox/`. Follow `sandbox-safety.md`.
 - **Daemonwatch** reuses the engine and hauntings. It must not contain a separate copy of fault logic.
 - **Tests** live in each workspace's `test/` folder as `*.test.ts` (`*.test.tsx` for UI). Property tests use `*.property.test.ts` where they are their own file.
-- **Kiro hooks** are `.kiro/hooks/*.kiro.hook` JSON files.
+- **Kiro hooks** are `.kiro/hooks/*.json` files in the v1 format (`version`, `hooks[]` with `trigger`, `matcher`, `action`). Kiro IDE 1.0 no longer runs the old `.kiro.hook` files. On-demand workflows are manual steering files run as slash commands, such as `/submission-guard`.
 - Write files with kebab-case names. Haunting IDs match their file names, for example `slow-whisper.yaml` has `id: slow-whisper`.

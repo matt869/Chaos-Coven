@@ -1,6 +1,6 @@
 # Kiro journal
 
-How Kiro features shaped the build. Newest entries at the bottom. The `journal-on-task-done` hook appends to this file.
+How Kiro features shaped the build. Newest entries at the bottom. The `kiro-journal` hook (`.kiro/hooks/kiro-journal.json`) appends to this file.
 
 ---
 

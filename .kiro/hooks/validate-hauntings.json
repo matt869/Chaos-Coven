@@ -1,0 +1,15 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "validate-hauntings",
+      "description": "Validates every haunting against hauntings/schema.json whenever a haunting file is saved.",
+      "trigger": "PostFileSave",
+      "matcher": "hauntings/([^/]+\\.yaml|schema\\.json)$",
+      "action": {
+        "type": "command",
+        "command": "npm run validate:hauntings"
+      }
+    }
+  ]
+}

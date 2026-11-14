@@ -31,7 +31,7 @@ Daemonwatch, a Kiro Crew App, lets a team lead schedule the same drill for a who
 - **Steering** set the rules before any code existed: product scope, the stack, sandbox safety, the ghost voice and testing standards.
 - **A spec** for the haunting engine (requirements, design, tasks) defined the API, the safety requirements and four properties to prove.
 - **Property tests** (fast-check) turned those properties into checks. They found real bugs (see `kiro-journal.md`).
-- **Hooks** validate hauntings on save, review UI changes for accessibility, run the full check before submitting and keep the journal.
+- **Hooks** (Kiro 1.0 v1 format) validate hauntings on save, review UI changes for accessibility and keep the journal. The pre-submission check is a manual steering file run as `/submission-guard`.
 - **Agents** author new hauntings, QA them against the sandbox, direct drills and write team postmortems.
 
 ## What's next

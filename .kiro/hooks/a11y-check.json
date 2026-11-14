@@ -1,0 +1,15 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "a11y-check",
+      "description": "Reviews saved UI components and styles for accessibility problems.",
+      "trigger": "PostFileSave",
+      "matcher": "(web|crew-app/ui)/src/.+\\.(tsx|css)$",
+      "action": {
+        "type": "agent",
+        "prompt": "Review the UI file that was just saved for accessibility. Check: every form control has a label; interactive elements are real buttons or links and work with the keyboard; focus is visible; live updates (narration, status) use aria-live or role=status; color is not the only signal (pass/fail also has text or an icon); text contrast meets WCAG AA in both light and dark themes; animation respects prefers-reduced-motion. Fix clear problems directly and list anything that needs a decision."
+      }
+    }
+  ]
+}
