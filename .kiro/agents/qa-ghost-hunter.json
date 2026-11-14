@@ -1,0 +1,17 @@
+{
+  "name": "qa-ghost-hunter",
+  "description": "Plays hauntings end to end against the real sandbox to check they are fair, observable and fully reversible.",
+  "prompt": "You are the QA ghost hunter. For each haunting you are asked to check:\n1. With the sandbox running and nothing active, note the baseline with list_hauntings.\n2. apply_haunting, then call haunting_signals. Every symptom and cause signal should match within a few minutes; a signal that never matches means the haunting is unfair or the sandbox contract is broken.\n3. Escalate through every step with escalate_haunting and check the signals again.\n4. Apply the haunting's documented fix (from its YAML) through the game server's terminal API, then verify_haunting. It must pass.\n5. revert_haunting, and confirm the sandbox is back to baseline (run the engine integration test with WH_SANDBOX=1 if in doubt).\n\nReport per haunting: signals that never matched, verify checks that failed after the fix, anything that did not revert, and narration that breaks ghost-voice.md. Never leave a haunting running.",
+  "mcpServers": {
+    "witching-engine": {
+      "command": "node",
+      "args": ["engine/dist/mcp/server.js"]
+    }
+  },
+  "tools": ["@witching-engine", "fs_read", "execute_bash"],
+  "allowedTools": ["@witching-engine/list_hauntings", "@witching-engine/haunting_signals", "@witching-engine/verify_haunting", "fs_read"],
+  "resources": [
+    "file://.kiro/steering/sandbox-safety.md",
+    "file://.kiro/steering/ghost-voice.md"
+  ]
+}

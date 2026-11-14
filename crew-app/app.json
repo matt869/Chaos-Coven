@@ -1,0 +1,28 @@
+{
+  "name": "daemonwatch",
+  "displayName": "Daemonwatch",
+  "version": "0.1.0",
+  "description": "Schedule Witching Hour on-call drills for a team, run them in the shared sandbox, and review every player's scored postmortem.",
+  "agents": [
+    { "name": "ghost-director", "config": "agents/ghost-director.json" },
+    { "name": "medium", "config": "agents/medium.json" }
+  ],
+  "skills": [
+    { "name": "haunting-playbook", "path": "skills/haunting-playbook/SKILL.md" },
+    { "name": "postmortem-writing", "path": "skills/postmortem-writing/SKILL.md" }
+  ],
+  "mcpServers": {
+    "witching-engine": {
+      "command": "node",
+      "args": ["engine/dist/mcp/server.js"],
+      "env": { "WH_COMPOSE_PROJECT": "witching-hour-sandbox" }
+    }
+  },
+  "ui": {
+    "path": "ui",
+    "build": "npm run build -w crew-app/ui",
+    "dist": "ui/dist",
+    "servedAt": "/daemonwatch/",
+    "api": "http://127.0.0.1:4000/api"
+  }
+}

@@ -4,3 +4,5 @@ dist/
 .env
 # Engine ledger: active faults saved for crash recovery
 engine/.witching/
+# Game server data (drills)
+server/.data/

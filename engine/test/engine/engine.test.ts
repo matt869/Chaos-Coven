@@ -3,7 +3,7 @@ import { HauntingNotActiveError, RevertError, UnknownHauntingError } from '../..
 import { MemoryLedgerStore } from '../../src/engine/ledger.js';
 import { toxicName } from '../../src/faults/drivers.js';
 import type { Haunting } from '../../src/haunting/types.js';
-import { FakeSandbox } from '../support/fake-sandbox.js';
+import { FakeSandbox } from '../../src/testing/fake-sandbox.js';
 import { fakeEngine, loadRepoHaunting } from '../support/setup.js';
 
 let sandboxes: FakeSandbox[] = [];

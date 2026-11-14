@@ -1,0 +1,26 @@
+{
+  "name": "@witching-hour/daemonwatch-ui",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Daemonwatch: schedule Witching Hour drills for a team and review their postmortems.",
+  "scripts": {
+    "dev": "vite --port 5174",
+    "build": "tsc -p tsconfig.json --noEmit && vite build",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@testing-library/react": "^16.3.3",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "jsdom": "^29.1.1",
+    "vite": "^8.3.8"
+  }
+}

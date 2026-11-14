@@ -13,7 +13,7 @@ import type {
   ToxiproxyFault,
 } from '../../src/haunting/types.js';
 import { APP_SERVICES, SERVICES } from '../../src/haunting/types.js';
-import { DEFAULT_TOPOLOGY } from './fake-sandbox.js';
+import { DEFAULT_TOPOLOGY } from '../../src/testing/fake-sandbox.js';
 
 const topo = DEFAULT_TOPOLOGY;
 

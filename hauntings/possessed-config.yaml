@@ -1,0 +1,127 @@
+# Possessed Config
+# Someone set payments' database pool size to 1. Every payment now waits in line for
+# a single connection, so checkout slows down and starts to time out. The setting is
+# stored in Postgres, so restarting payments does not clear it.
+
+id: possessed-config
+name: Possessed Config
+difficulty: medium
+target: payments
+
+page:
+  alert: "CheckoutErrorRate: storefront /api/checkout 5xx rate above 5% for 3 minutes."
+  narration: "Checkout stumbles, but nothing has crashed. Payments is waiting on something it cannot get."
+
+fault:
+  type: config
+  params:
+    service: payments
+    key: db.pool_max
+    value: 1
+
+escalation:
+  - step: 1
+    afterSeconds: 300
+    narration: "The line for a database connection in payments keeps getting longer."
+    faults: []
+  - step: 2
+    # Retries amplify the overload: every timed-out payment is tried again.
+    afterSeconds: 600
+    narration: "Payments now retries every failure six times. Each retry joins the same queue for one connection."
+    faults:
+      - type: config
+        params:
+          service: payments
+          key: retry.max_attempts
+          value: 6
+
+signals:
+  - id: checkout-errors
+    kind: symptom
+    description: Storefront checkout returns 5xx because payments times out.
+    source: prometheus
+    query: 'sum(rate(http_requests_total{service="storefront",route="/api/checkout",code=~"5.."}[2m]))'
+    emptyValue: 0
+    expect: { op: ">", value: 0.05 }
+  - id: payments-latency-high
+    kind: symptom
+    description: Payments p99 latency goes above 2s.
+    source: prometheus
+    query: 'histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket{service="payments"}[2m])))'
+    expect: { op: ">", value: 2 }
+  - id: payments-pool-waiting
+    kind: cause
+    description: Payments requests are waiting for a database connection.
+    source: prometheus
+    query: 'sum(witching_db_pool_waiting{service="payments"})'
+    emptyValue: 0
+    expect: { op: ">", value: 0 }
+  - id: payments-pool-max-one
+    kind: cause
+    description: Payments' db.pool_max config value is 1.
+    source: prometheus
+    query: 'max(witching_config_value{service="payments",key="db.pool_max"})'
+    expect: { op: "==", value: 1 }
+  - id: payments-pool-timeout-logs
+    kind: cause
+    description: Payments logs timeouts while waiting for a database connection.
+    source: loki
+    query: 'sum(count_over_time({service="payments"} |= "timeout acquiring db connection" [2m]))'
+    emptyValue: 0
+    expect: { op: ">", value: 0 }
+  - id: cart-healthy
+    kind: red-herring
+    description: Cart uses the same Postgres and stays healthy, so the database itself is fine.
+    source: prometheus
+    query: 'sum(rate(http_requests_total{service="cart",code=~"5.."}[2m]))'
+    emptyValue: 0
+    expect: { op: "<", value: 0.05 }
+
+verify:
+  - id: checkout-errors-normal
+    description: Storefront checkout 5xx rate is back under 0.05/s.
+    source: prometheus
+    query: 'sum(rate(http_requests_total{service="storefront",route="/api/checkout",code=~"5.."}[1m]))'
+    emptyValue: 0
+    expect: { op: "<", value: 0.05 }
+  - id: payments-pool-not-waiting
+    description: No payments requests are waiting for a database connection.
+    source: prometheus
+    query: 'sum(witching_db_pool_waiting{service="payments"})'
+    emptyValue: 0
+    expect: { op: "==", value: 0 }
+  - id: payments-pool-sized
+    description: Payments' db.pool_max is at least 5.
+    source: prometheus
+    query: 'max(witching_config_value{service="payments",key="db.pool_max"})'
+    expect: { op: ">=", value: 5 }
+
+rootCause:
+  component: payments
+  summary: Payments' db.pool_max config was set to 1, so every payment waits for a single database connection and checkout times out. The value is stored in Postgres, so restarting payments does not fix it.
+  keywords:
+    - [pool, connection, pool_max]
+    - [config, setting, "1", too low, too small, exhausted]
+  minKeywordMatches: 2
+
+fix:
+  summary: Set payments' db.pool_max back to a sensible size, such as 10.
+  actions:
+    - haunt config set payments db.pool_max 10
+
+harmfulActions:
+  - action: haunt purge-queue orders
+    penalty: 30
+    reason: Purging the orders queue deletes orders customers already paid for, and the queue was not the problem.
+  - action: haunt restart postgres
+    penalty: 15
+    reason: Postgres was healthy (cart kept working). Restarting it takes every service down.
+  - action: haunt restart payments
+    penalty: 5
+    reason: The bad value is stored in Postgres, so a restart does not clear it, and it fails every in-flight payment.
+  - action: haunt restart storefront
+    penalty: 10
+    reason: The storefront was only passing on payments' errors. Restarting it drops in-flight checkouts.
+
+scoring:
+  detectParSeconds: 420

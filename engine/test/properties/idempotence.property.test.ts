@@ -2,7 +2,7 @@
 import fc from 'fast-check';
 import { afterEach, describe, expect, it } from 'vitest';
 import { hauntingArb } from '../support/arbitraries.js';
-import type { FakeSandbox } from '../support/fake-sandbox.js';
+import type { FakeSandbox } from '../../src/testing/fake-sandbox.js';
 import { fakeEngine } from '../support/setup.js';
 
 let sandboxes: FakeSandbox[] = [];

@@ -1,0 +1,189 @@
+# The Witching Hour sandbox: the haunted shop and its observability stack.
+#
+#   docker compose -f sandbox/docker-compose.yml up -d --build
+#
+# Safety (see .kiro/steering/sandbox-safety.md):
+# - Every container has CPU and memory limits.
+# - Services sit on the internal "sandbox" network, which has no route out.
+#   Only the nginx gateway joins the "edge" network, and its ports bind to 127.0.0.1.
+# - App containers drop all Linux capabilities, run read-only as a non-root user, and
+#   mount nothing from the host. No container gets the Docker socket.
+
+name: witching-hour-sandbox
+
+x-app: &app
+  build:
+    context: ..
+    dockerfile: sandbox/services/Dockerfile
+  image: witching-hour/sandbox-services:local
+  networks: [sandbox]
+  read_only: true
+  tmpfs: [/tmp]
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  restart: "no"
+  environment: &app-env
+    LOKI_URL: http://loki:3100
+    CONFIG_DB_URL: postgres://shop:${WH_PG_PASSWORD:-shop}@postgres:5432/shop
+  deploy:
+    resources:
+      limits: { cpus: "0.5", memory: 256M }
+  depends_on:
+    postgres: { condition: service_healthy }
+    toxiproxy: { condition: service_started }
+    loki: { condition: service_started }
+
+services:
+  storefront:
+    <<: *app
+    environment:
+      <<: *app-env
+      SERVICE: storefront
+      REDIS_URL: redis://toxiproxy:21003
+      CART_URL: http://toxiproxy:21001
+      PAYMENTS_URL: http://toxiproxy:21002
+
+  cart:
+    <<: *app
+    environment:
+      <<: *app-env
+      SERVICE: cart
+      DATA_DB_URL: postgres://shop:${WH_PG_PASSWORD:-shop}@toxiproxy:21006/shop
+
+  payments:
+    <<: *app
+    environment:
+      <<: *app-env
+      SERVICE: payments
+      DATA_DB_URL: postgres://shop:${WH_PG_PASSWORD:-shop}@toxiproxy:21007/shop
+
+  worker:
+    <<: *app
+    environment:
+      <<: *app-env
+      SERVICE: worker
+      REDIS_URL: redis://toxiproxy:21004
+      DATA_DB_URL: postgres://shop:${WH_PG_PASSWORD:-shop}@toxiproxy:21005/shop
+
+  traffic:
+    <<: *app
+    environment:
+      <<: *app-env
+      SERVICE: traffic
+      STOREFRONT_URL: http://storefront:8080
+      TRAFFIC_RPS: ${WH_TRAFFIC_RPS:-5}
+    deploy:
+      resources:
+        limits: { cpus: "0.25", memory: 128M }
+    depends_on:
+      storefront: { condition: service_healthy }
+
+  postgres:
+    image: postgres:16.6-alpine
+    networks: [sandbox]
+    environment:
+      POSTGRES_USER: shop
+      POSTGRES_PASSWORD: ${WH_PG_PASSWORD:-shop}
+      POSTGRES_DB: shop
+    volumes:
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - pgdata:/var/lib/postgresql/data
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shop -d shop"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    deploy:
+      resources:
+        limits: { cpus: "1.0", memory: 512M }
+
+  queue:
+    image: redis:7.4-alpine
+    networks: [sandbox]
+    command: ["redis-server", "--maxmemory", "64mb", "--maxmemory-policy", "noeviction", "--save", ""]
+    security_opt: [no-new-privileges:true]
+    deploy:
+      resources:
+        limits: { cpus: "0.5", memory: 128M }
+
+  toxiproxy:
+    image: ghcr.io/shopify/toxiproxy:2.9.0
+    networks: [sandbox]
+    command: ["-host", "0.0.0.0", "-config", "/config/toxiproxy.json"]
+    volumes:
+      - ./toxiproxy/config.json:/config/toxiproxy.json:ro
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    deploy:
+      resources:
+        limits: { cpus: "0.5", memory: 128M }
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    networks: [sandbox]
+    command: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.retention.time=6h"]
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    security_opt: [no-new-privileges:true]
+    deploy:
+      resources:
+        limits: { cpus: "0.5", memory: 512M }
+
+  loki:
+    image: grafana/loki:3.3.2
+    networks: [sandbox]
+    command: ["-config.file=/etc/loki/local-config.yaml"]
+    security_opt: [no-new-privileges:true]
+    deploy:
+      resources:
+        limits: { cpus: "0.5", memory: 512M }
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    networks: [sandbox]
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+      GF_SECURITY_ALLOW_EMBEDDING: "true"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/overview.json
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    security_opt: [no-new-privileges:true]
+    deploy:
+      resources:
+        limits: { cpus: "0.5", memory: 256M }
+
+  gateway:
+    image: nginx:1.27-alpine
+    networks: [sandbox, edge]
+    volumes:
+      - ./gateway/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:8081:8081"
+      - "127.0.0.1:8082:8082"
+      - "127.0.0.1:8083:8083"
+      - "127.0.0.1:8084:8084"
+      - "127.0.0.1:8474:8474"
+      - "127.0.0.1:9090:9090"
+      - "127.0.0.1:3100:3100"
+      - "127.0.0.1:3000:3000"
+    security_opt: [no-new-privileges:true]
+    deploy:
+      resources:
+        limits: { cpus: "0.25", memory: 64M }
+
+networks:
+  sandbox:
+    internal: true
+  edge: {}
+
+volumes:
+  pgdata: {}

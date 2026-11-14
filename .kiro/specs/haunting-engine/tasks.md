@@ -12,5 +12,5 @@
 - [x] 10. Fake sandbox and haunting generators for tests
 - [x] 11. Property tests 1-4 _(R5)_
 - [x] 12. Unit tests for every module
-- [ ] 13. Run `test/integration` against the real sandbox (`WH_SANDBOX=1`). **Blocked:** `sandbox/` is not built yet. It must implement the contract in design.md.
-- [ ] 14. Write `possessed-config.yaml` and `slow-whisper.yaml`. They are empty now, so the loader skips them.
+- [ ] 13. Run `test/integration` against the real sandbox (`WH_SANDBOX=1`). `sandbox/` now implements the contract in design.md; this needs a machine with Docker running.
+- [x] 14. Write `possessed-config.yaml` and `slow-whisper.yaml`

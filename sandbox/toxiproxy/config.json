@@ -1,0 +1,9 @@
+[
+  { "name": "storefront_cart", "listen": "0.0.0.0:21001", "upstream": "cart:8080", "enabled": true },
+  { "name": "storefront_payments", "listen": "0.0.0.0:21002", "upstream": "payments:8080", "enabled": true },
+  { "name": "storefront_queue", "listen": "0.0.0.0:21003", "upstream": "queue:6379", "enabled": true },
+  { "name": "worker_queue", "listen": "0.0.0.0:21004", "upstream": "queue:6379", "enabled": true },
+  { "name": "worker_postgres", "listen": "0.0.0.0:21005", "upstream": "postgres:5432", "enabled": true },
+  { "name": "cart_postgres", "listen": "0.0.0.0:21006", "upstream": "postgres:5432", "enabled": true },
+  { "name": "payments_postgres", "listen": "0.0.0.0:21007", "upstream": "postgres:5432", "enabled": true }
+]

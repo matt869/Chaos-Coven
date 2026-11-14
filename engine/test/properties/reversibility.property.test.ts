@@ -4,7 +4,7 @@ import fc from 'fast-check';
 import { afterEach, describe, expect, it } from 'vitest';
 import { SERVICES } from '../../src/haunting/types.js';
 import { hauntingArb } from '../support/arbitraries.js';
-import type { FakeSandbox } from '../support/fake-sandbox.js';
+import type { FakeSandbox } from '../../src/testing/fake-sandbox.js';
 import { fakeEngine, loadRepoHaunting } from '../support/setup.js';
 
 const BASELINE_TIMEOUT_MS = 2_000;

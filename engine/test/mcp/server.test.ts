@@ -2,7 +2,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createMcpServer } from '../../src/mcp/server.js';
-import type { FakeSandbox } from '../support/fake-sandbox.js';
+import type { FakeSandbox } from '../../src/testing/fake-sandbox.js';
 import { fakeEngine, loadRepoHaunting } from '../support/setup.js';
 
 let sandbox: FakeSandbox | undefined;

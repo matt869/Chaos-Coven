@@ -1,0 +1,15 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+# DNS discovery finds every replica, so `haunt scale worker 2` is scraped too, and a
+# stopped service simply has no targets (up{job="worker"} disappears).
+scrape_configs:
+  - job_name: storefront
+    dns_sd_configs: [{ names: [storefront], type: A, port: 8080, refresh_interval: 5s }]
+  - job_name: cart
+    dns_sd_configs: [{ names: [cart], type: A, port: 8080, refresh_interval: 5s }]
+  - job_name: payments
+    dns_sd_configs: [{ names: [payments], type: A, port: 8080, refresh_interval: 5s }]
+  - job_name: worker
+    dns_sd_configs: [{ names: [worker], type: A, port: 8080, refresh_interval: 5s }]

@@ -6,7 +6,7 @@ import { MemoryLedgerStore, type LedgerStore } from '../../src/engine/ledger.js'
 import { createDrivers } from '../../src/faults/drivers.js';
 import { createValidator, parseHaunting } from '../../src/haunting/loader.js';
 import type { Haunting } from '../../src/haunting/types.js';
-import { FakeSandbox } from './fake-sandbox.js';
+import { FakeSandbox } from '../../src/testing/fake-sandbox.js';
 
 export const HAUNTINGS_DIR = resolve(fileURLToPath(new URL('.', import.meta.url)), '../../../hauntings');
 

@@ -7,11 +7,13 @@ inclusion: always
 ## Language and runtime
 
 - **TypeScript** everywhere, with `strict` mode on. Do not use `any` without a comment explaining why.
-- **Node.js 18+.** Do not use APIs that need a newer Node version.
-- **npm workspaces** with three packages:
-  - `engine`: haunting loader, fault injection, recovery checks, scoring
-  - `server`: game API, sessions, narrator, terminal backend
+- **Node.js 18+** for runtime code. Do not use APIs that need a newer Node version. Development tooling (Vitest 4, Vite) needs Node 20+.
+- **npm workspaces**:
+  - `engine`: haunting loader, fault injection, recovery checks, scoring, MCP server
+  - `server`: game API, sessions, narrator, terminal backend, drills API
   - `web`: player UI
+  - `sandbox/services`: the haunted shop's services (one image, role chosen by `SERVICE`)
+  - `crew-app/ui`: the Daemonwatch UI
 - Use npm, not yarn or pnpm. Add dependencies to the workspace that uses them: `npm install <pkg> -w <workspace>`.
 
 ## Frontend

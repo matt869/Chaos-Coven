@@ -16,9 +16,9 @@ import type {
   ToggleState,
   Toxic,
   ToxiproxyClient,
-} from '../../src/clients/types.js';
-import { stableStringify } from '../../src/engine/compare.js';
-import type { QuerySource, Scalar } from '../../src/haunting/types.js';
+} from '../clients/types.js';
+import { stableStringify } from '../engine/compare.js';
+import type { QuerySource, Scalar } from '../haunting/types.js';
 
 export interface Topology {
   containers: Record<string, number>;
@@ -42,7 +42,7 @@ export const DEFAULT_TOPOLOGY: Topology = {
   config: {
     storefront: { 'checkout.timeout_ms': 2000, 'feature.new_cart': false, 'cache.ttl_s': null },
     cart: { 'pool.max_connections': 20, 'cache.ttl_s': null },
-    payments: { 'retry.max_attempts': 3, 'provider.region': 'eu', 'cache.ttl_s': null },
+    payments: { 'db.pool_max': 10, 'retry.max_attempts': 3, 'provider.region': 'eu', 'cache.ttl_s': null },
     worker: { concurrency: 4, 'cache.ttl_s': null },
   },
   toggles: ['memory-leak', 'consumer-stall', 'slow-gc'],

@@ -1,0 +1,25 @@
+{
+  "name": "@witching-hour/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Game server: sessions, restricted terminal, Bedrock narrator, scoring and the Daemonwatch drills API.",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "dev": "tsx watch src/main.ts",
+    "start": "node dist/main.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/bedrock-sdk": "^1.1.2",
+    "@witching-hour/engine": "0.1.0",
+    "ws": "^8.23.0"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.18.2"
+  }
+}

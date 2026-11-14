@@ -1,0 +1,116 @@
+# Slow Whisper
+# The cart service leaks memory slowly. Nothing fails at first; memory climbs, garbage
+# collection works harder, and cart latency creeps up. Restarting cart clears the leak.
+
+id: slow-whisper
+name: Slow Whisper
+difficulty: hard
+target: cart
+
+page:
+  alert: "CartLatencyHigh: cart p99 latency above 300ms for 5 minutes."
+  narration: "Cart answers every request, just a little slower each minute. Something inside it keeps growing."
+
+fault:
+  type: debug-endpoint
+  params:
+    service: cart
+    toggle: memory-leak
+    settings:
+      mb_per_minute: 15
+      max_mb: 160
+
+escalation:
+  - step: 1
+    afterSeconds: 300
+    narration: "Cart's memory is still climbing, and it is not giving any back."
+    faults: []
+  - step: 2
+    # Garbage collection pauses get longer as the heap fills up.
+    afterSeconds: 600
+    narration: "Cart now stalls while it tries to clean up. Each pause holds every request behind it."
+    faults:
+      - type: debug-endpoint
+        params:
+          service: cart
+          toggle: slow-gc
+          settings:
+            pause_ms: 150
+
+signals:
+  - id: cart-memory-rising
+    kind: cause
+    description: Cart resident memory climbs steadily and is never released.
+    source: prometheus
+    query: 'max(process_resident_memory_bytes{job="cart"})'
+    expect: { op: ">", value: 150000000 }
+  - id: cart-heap-growing
+    kind: cause
+    description: Cart's V8 heap keeps growing.
+    source: prometheus
+    query: 'max(nodejs_heap_size_used_bytes{job="cart"})'
+    expect: { op: ">", value: 80000000 }
+  - id: cart-gc-time
+    kind: cause
+    description: Cart spends more and more time in garbage collection.
+    source: prometheus
+    query: 'sum(rate(nodejs_gc_duration_seconds_sum{job="cart"}[2m]))'
+    emptyValue: 0
+    expect: { op: ">", value: 0.02 }
+  - id: cart-latency-high
+    kind: symptom
+    description: Cart p99 latency is above 300ms.
+    source: prometheus
+    query: 'histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket{service="cart"}[2m])))'
+    expect: { op: ">", value: 0.3 }
+  - id: postgres-fine
+    kind: red-herring
+    description: Payments uses the same Postgres and stays fast, so the database is not the cause.
+    source: prometheus
+    query: 'histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket{service="payments"}[2m])))'
+    expect: { op: "<", value: 0.3 }
+
+verify:
+  - id: cart-memory-normal
+    description: Cart resident memory is back under 120 MB.
+    source: prometheus
+    query: 'max(process_resident_memory_bytes{job="cart"})'
+    expect: { op: "<", value: 120000000 }
+  - id: cart-latency-normal
+    description: Cart p99 latency is back under 300ms.
+    source: prometheus
+    query: 'histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket{service="cart"}[1m])))'
+    expect: { op: "<", value: 0.3 }
+  - id: cart-errors-normal
+    description: Cart 5xx rate is under 0.05/s.
+    source: prometheus
+    query: 'sum(rate(http_requests_total{service="cart",code=~"5.."}[1m]))'
+    emptyValue: 0
+    expect: { op: "<", value: 0.05 }
+
+rootCause:
+  component: cart
+  summary: The cart service has a memory leak. Its heap grows until garbage collection pauses slow every request.
+  keywords:
+    - [memory, leak, heap, rss]
+    - [grow, climb, rising, gc, garbage]
+  minKeywordMatches: 2
+
+fix:
+  summary: Restart cart to release the leaked memory (and file a bug for the leak).
+  actions:
+    - haunt restart cart
+
+harmfulActions:
+  - action: haunt purge-queue orders
+    penalty: 30
+    reason: Purging the orders queue deletes orders customers already paid for, and the queue was not the problem.
+  - action: haunt restart postgres
+    penalty: 15
+    reason: Postgres was healthy (payments stayed fast). Restarting it takes every service down.
+  - action: haunt restart payments
+    penalty: 10
+    reason: Payments was healthy. Restarting it fails in-flight payments.
+
+scoring:
+  detectParSeconds: 600

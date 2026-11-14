@@ -1,0 +1,12 @@
+import react from '@vitejs/plugin-react';
+import { defineConfig } from 'vite';
+
+export default defineConfig({
+  plugins: [react()],
+  server: {
+    port: 5173,
+    // The game server owns the API and the terminal WebSocket.
+    proxy: { '/api': { target: 'http://127.0.0.1:4000', ws: true } },
+  },
+  test: { environment: 'jsdom', include: ['test/**/*.test.tsx'] },
+} as never);

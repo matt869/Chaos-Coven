@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [20, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - name: Validate hauntings
+        run: npm run validate:hauntings
+      - name: Build engine
+        run: npm run build -w engine
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Unit and property tests
+        run: npm test
+      - name: Build everything
+        run: npm run build
+
+  sandbox:
+    name: Sandbox config
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate docker-compose.yml
+        run: docker compose -f sandbox/docker-compose.yml config --quiet
+      - name: Build the services image
+        run: docker compose -f sandbox/docker-compose.yml build storefront

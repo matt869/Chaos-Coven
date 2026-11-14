@@ -2,13 +2,25 @@
   "name": "witching-hour",
   "private": true,
   "workspaces": [
-    "engine"
+    "engine",
+    "sandbox/services",
+    "server",
+    "web",
+    "crew-app/ui"
   ],
   "engines": {
     "node": ">=18"
   },
   "scripts": {
+    "build": "npm run build --workspaces --if-present",
     "test": "npm test --workspaces --if-present",
-    "typecheck": "npm run typecheck --workspaces --if-present"
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "validate:hauntings": "npm run validate:hauntings -w engine",
+    "check": "npm run validate:hauntings && npm run build -w engine && npm run typecheck && npm test",
+    "sandbox:up": "docker compose -f sandbox/docker-compose.yml up -d --build",
+    "sandbox:down": "docker compose -f sandbox/docker-compose.yml down -v",
+    "dev:server": "npm run dev -w server",
+    "dev:web": "npm run dev -w web",
+    "dev:daemonwatch": "npm run dev -w crew-app/ui"
   }
 }

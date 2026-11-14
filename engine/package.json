@@ -17,7 +17,8 @@
     "test": "vitest run",
     "test:unit": "vitest run --exclude \"test/properties/**\"",
     "test:properties": "vitest run test/properties",
-    "mcp": "tsx src/mcp/server.ts"
+    "mcp": "tsx src/mcp/server.ts",
+    "validate:hauntings": "tsx scripts/validate-hauntings.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.2",
@@ -31,5 +32,18 @@
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "vitest": "^4.1.12"
-  }
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing/fake-sandbox.d.ts",
+      "default": "./dist/testing/fake-sandbox.js"
+    }
+  },
+  "files": [
+    "dist"
+  ]
 }

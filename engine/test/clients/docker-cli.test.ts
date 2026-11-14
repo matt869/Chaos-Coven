@@ -77,3 +77,13 @@ describe('DockerCliClient', () => {
     expect(commands).toEqual([]);
   });
 });
+
+describe('DockerCliClient.restart', () => {
+  it('restarts sandbox containers only', async () => {
+    const { exec, commands } = fakeDocker([container(ID1, 'running'), container(FOREIGN, 'running', 'other')]);
+    const client = new DockerCliClient('sandbox', exec);
+    await client.restart(ID1);
+    expect(commands.at(-1)).toEqual(['restart', ID1]);
+    await expect(client.restart(FOREIGN)).rejects.toThrow(/not in sandbox project/);
+  });
+});

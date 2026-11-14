@@ -1,0 +1,25 @@
+{
+  "name": "@witching-hour/sandbox-services",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "The haunted shop: storefront, cart, payments, worker and traffic generator in one image, selected by SERVICE.",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "start": "node dist/main.js"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.23.1",
+    "@witching-hour/engine": "0.1.0"
+  },
+  "dependencies": {
+    "pg": "^8.23.1",
+    "prom-client": "^15.1.3",
+    "redis": "^6.3.1"
+  }
+}

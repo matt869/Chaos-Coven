@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { createDrivers, toxicName } from '../../src/faults/drivers.js';
 import type { ConfigFault, DebugEndpointFault, DockerFault, ToxiproxyFault } from '../../src/haunting/types.js';
-import { FakeSandbox } from '../support/fake-sandbox.js';
+import { FakeSandbox } from '../../src/testing/fake-sandbox.js';
 
 let sandbox: FakeSandbox;
 afterEach(() => sandbox?.dispose());

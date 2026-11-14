@@ -75,6 +75,16 @@ export class DockerCliClient implements DockerClient {
     }
   }
 
+  /** Restarts a sandbox container, as the player's `haunt restart` does. */
+  async restart(containerId: string): Promise<void> {
+    const [info] = await this.inspect([containerId]);
+    if (info === undefined) throw new Error(`Container ${containerId} not found`);
+    if (info.Config.Labels?.[PROJECT_LABEL] !== this.project) {
+      throw new Error(`Refusing to touch container ${containerId}: it is not in sandbox project "${this.project}"`);
+    }
+    await this.exec('docker', ['restart', info.Id]);
+  }
+
   private async inspect(ids: string[]): Promise<InspectResult[]> {
     for (const id of ids) {
       if (!/^[a-f0-9]{12,64}$/.test(id)) throw new Error(`Invalid container id: ${id}`);
