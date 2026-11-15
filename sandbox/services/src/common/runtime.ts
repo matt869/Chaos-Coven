@@ -76,6 +76,10 @@ export async function startRuntime(service: string, env: Env): Promise<Runtime> 
     }));
   mountConfigAdmin(router, config, log);
   mountDebugAdmin(router, toggles);
+  // slow-gc pauses hit real traffic, not health checks, metrics or admin calls.
+  router.before((pattern) => {
+    if (!pattern.startsWith('/__') && pattern !== '/metrics' && pattern !== '/healthz') toggles.maybeStall();
+  });
 
   let pool: Pool | undefined;
   let redis: ReturnType<typeof createClient> | undefined;

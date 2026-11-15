@@ -31,7 +31,10 @@ export function createMcpHttpHandler(opts: McpHttpOptions): (req: IncomingMessag
   const origins = hosts.map((h) => `http://${h}`);
 
   return async (req, res, body) => {
-    if (!LOOPBACK.has(req.socket.remoteAddress ?? '')) {
+    // A tunnel (cloudflared) connects from loopback too, so also refuse anything that
+    // was forwarded: MCP can apply hauntings and must never be public.
+    const forwarded = ['cf-connecting-ip', 'cf-ray', 'x-forwarded-for', 'forwarded'].some((h) => req.headers[h] !== undefined);
+    if (forwarded || !LOOPBACK.has(req.socket.remoteAddress ?? '')) {
       res.writeHead(403, { 'content-type': 'application/json' }).end(JSON.stringify({ error: 'MCP is only served to loopback clients' }));
       return;
     }

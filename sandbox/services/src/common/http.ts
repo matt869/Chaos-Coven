@@ -37,6 +37,13 @@ export class HttpError extends Error {
 /** A tiny router: `/cart/:id` style patterns, JSON in and out. */
 export class Router {
   private readonly routes: Route[] = [];
+  private readonly hooks: ((pattern: string) => void | Promise<void>)[] = [];
+
+  /** Runs before every matched handler, inside the measured request time. */
+  before(hook: (pattern: string) => void | Promise<void>): this {
+    this.hooks.push(hook);
+    return this;
+  }
 
   on(method: string, pattern: string, handler: Handler): this {
     const keys: string[] = [];
@@ -68,6 +75,7 @@ export class Router {
     const found = this.match(method, path);
     if (found === undefined) return { pattern: 'unmatched', response: { status: 404, body: { error: 'not found' } } };
     try {
+      for (const hook of this.hooks) await hook(found.route.pattern);
       const response = await found.route.handler({ method, path, params: found.params, body });
       return { pattern: found.route.pattern, response };
     } catch (err) {

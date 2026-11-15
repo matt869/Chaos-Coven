@@ -1,7 +1,8 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { lazy, Suspense, useEffect, useState, type FormEvent } from 'react';
 import { api, type HauntingSummary, type Postmortem as PM, type SessionView } from './api';
-import { Postmortem } from './Postmortem';
-import { Session } from './Session';
+// Loaded on demand: the session screen pulls in xterm.js, the postmortem is only needed at the end.
+const Session = lazy(() => import('./Session').then((m) => ({ default: m.Session })));
+const Postmortem = lazy(() => import('./Postmortem').then((m) => ({ default: m.Postmortem })));
 
 type Screen = { kind: 'pick' } | { kind: 'play'; session: SessionView } | { kind: 'postmortem'; pm: PM };
 
@@ -44,7 +45,7 @@ export function Picker({ hauntings, onStart, error }: { hauntings: HauntingSumma
 export function App() {
   const [screen, setScreen] = useState<Screen>({ kind: 'pick' });
   const [hauntings, setHauntings] = useState<HauntingSummary[]>([]);
-  const [grafanaUrl, setGrafanaUrl] = useState('http://127.0.0.1:3000');
+  const [grafanaUrl, setGrafanaUrl] = useState('/grafana');
   const [error, setError] = useState<string>();
 
   useEffect(() => {
@@ -83,8 +84,10 @@ export function App() {
             }}
           />
         )}
-        {screen.kind === 'play' && <Session initial={screen.session} grafanaUrl={grafanaUrl} onEnded={(pm) => setScreen({ kind: 'postmortem', pm })} />}
-        {screen.kind === 'postmortem' && <Postmortem pm={screen.pm} onAgain={() => setScreen({ kind: 'pick' })} />}
+        <Suspense fallback={<p className="muted" role="status">Loading…</p>}>
+          {screen.kind === 'play' && <Session initial={screen.session} grafanaUrl={grafanaUrl} onEnded={(pm) => setScreen({ kind: 'postmortem', pm })} />}
+          {screen.kind === 'postmortem' && <Postmortem pm={screen.pm} onAgain={() => setScreen({ kind: 'pick' })} />}
+        </Suspense>
       </main>
     </>
   );

@@ -19,9 +19,13 @@ export const LIMITS = { leakMaxMb: 200, leakMbPerMinute: 60, gcPauseMs: 500 } as
  */
 export class Toggles {
   private readonly state = new Map<ToggleName, ToggleState>(TOGGLES.map((t) => [t, { enabled: false, settings: {} }]));
-  private leaked: Buffer[] = [];
+  /** Retained JavaScript arrays: an on-heap leak, so heap and GC metrics move like a real Node leak. */
+  private leaked: number[][] = [];
   private leakTimer?: ReturnType<typeof setInterval>;
-  private gcTimer?: ReturnType<typeof setInterval>;
+  /** Objects allocated by slow-gc churn (keeps the work observable). */
+  churned = 0;
+  /** Share of requests a slow-gc pause lands on. */
+  static readonly STALL_SHARE = 0.25;
 
   constructor(private readonly log: Logger) {}
 
@@ -50,14 +54,33 @@ export class Toggles {
   leakTick(mbPerTick: number, maxMb: number): void {
     const cap = Math.min(maxMb, LIMITS.leakMaxMb);
     for (let i = 0; i < mbPerTick && this.leaked.length < cap; i++) {
-      // Fill the buffer so the pages are really resident.
-      this.leaked.push(Buffer.alloc(1024 * 1024, 1));
+      // 131072 small integers is about 1 MB of V8 heap.
+      this.leaked.push(Array.from({ length: 131_072 }, (_, n) => n));
     }
   }
 
   stop(): void {
     clearInterval(this.leakTimer);
-    clearInterval(this.gcTimer);
+  }
+
+  /**
+   * slow-gc: a pause lands on about a quarter of requests while they are being handled,
+   * the way a long GC pause stalls whatever is in flight. The pause is spent churning
+   * short-lived garbage, so it is real allocation and GC work (nodejs_gc_* metrics).
+   * Returns the milliseconds stalled.
+   */
+  maybeStall(random: () => number = Math.random): number {
+    const s = this.state.get('slow-gc')!;
+    if (!s.enabled || random() >= Toggles.STALL_SHARE) return 0;
+    const pause = Math.min(num(s.settings.pause_ms, 100), LIMITS.gcPauseMs);
+    const started = Date.now();
+    let sink = 0;
+    while (Date.now() - started < pause) {
+      const garbage = Array.from({ length: 50_000 }, (_, n) => ({ n }));
+      sink += garbage.length;
+    }
+    this.churned += sink;
+    return Date.now() - started;
   }
 
   private apply(name: ToggleName): void {
@@ -73,21 +96,6 @@ export class Toggles {
         this.leakTimer.unref();
       } else {
         this.leaked = [];
-      }
-    }
-    if (name === 'slow-gc') {
-      clearInterval(this.gcTimer);
-      this.gcTimer = undefined;
-      if (s.enabled) {
-        const pause = Math.min(num(s.settings.pause_ms, 100), LIMITS.gcPauseMs);
-        // Block the event loop, the way a long GC pause does.
-        this.gcTimer = setInterval(() => {
-          const until = Date.now() + pause;
-          while (Date.now() < until) {
-            /* stall */
-          }
-        }, 1000);
-        this.gcTimer.unref();
       }
     }
     this.log.info('debug toggle changed', { toggle: name, enabled: s.enabled });

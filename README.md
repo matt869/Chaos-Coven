@@ -39,16 +39,21 @@ You need Node.js 20+ and Docker.
 npm install
 npm run build              # engine, server, both UIs, sandbox services
 npm run sandbox:up         # the shop + Toxiproxy, Prometheus, Loki, Grafana
+npm run sandbox:status     # wait for "sandbox: healthy"
 npm run dev:server         # game server on http://127.0.0.1:4000
 ```
 
-Then open **http://127.0.0.1:4000**, pick a haunting, and start your shift. Daemonwatch is at **http://127.0.0.1:4000/daemonwatch/**, and Grafana at **http://127.0.0.1:3000**.
+Then open **http://127.0.0.1:4000**, pick a haunting, and start your shift. Daemonwatch is at **http://127.0.0.1:4000/daemonwatch/**, and Grafana at **http://127.0.0.1:4000/grafana/** (the game server proxies it, so it works on one hostname).
 
 To add Daemonwatch to a running Kiro Crew, see [crew-app/README.md](crew-app/README.md) (`POST /api/apps/install {"source": "./crew-app"}`).
 
 To work on the UIs with hot reload, run `npm run dev:web` (port 5173) or `npm run dev:daemonwatch` (port 5174) alongside the server.
 
 When you're done: `npm run sandbox:down`.
+
+### Hosting it (Cloudflare)
+
+The game needs Docker, so it can't run on Cloudflare Pages or Workers. Run the stack on one machine and put a Cloudflare Tunnel with Cloudflare Access in front of it: see [infra/cloudflare/README.md](infra/cloudflare/README.md). `npm run start:hosted` starts the server with demo-friendly timings.
 
 ### Settings
 
@@ -127,6 +132,8 @@ Every workspace has unit tests. Core guarantees are [fast-check](https://fast-ch
 - **Sandbox services:** the DB connection limiter never admits work beyond its current limit, even while it's being resized.
 - **Daemonwatch:** the backend accepts a correctly signed proxy request and rejects any change to its body, path, method or timestamp, and any timestamp outside ±60s; no path in `app.json` is absolute or escapes `crew-app/`.
 
+**Bot playtest against the real sandbox:** `npm run playthrough` plays every haunting like a player would. It waits for each signal to really appear, applies the documented fix, checks that verify passes, and confirms the sandbox recovers. Results go to `scripts/.playthrough/results.json`.
+
 Engine property tests run against an in-memory fake sandbox that implements the same interfaces as the real clients. To run property 1 against the real sandbox, use `WH_SANDBOX=1 npx vitest run test/integration` from `engine/`.
 
 > **On Windows,** run tests from PowerShell or cmd, not Git Bash. Git Bash's lowercase `c:` drive letter makes Vitest load twice, and every suite fails with "failed to find the current suite".
@@ -149,3 +156,4 @@ Built and tested: the engine, three hauntings, the sandbox definition, the game 
 ## License
 
 [MIT](LICENSE)
+

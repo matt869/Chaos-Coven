@@ -11,11 +11,11 @@
 
 name: witching-hour-sandbox
 
+# All app services share one image. Only storefront builds it (building it once per
+# service makes parallel builds race); the rest reuse it and never try to pull it.
 x-app: &app
-  build:
-    context: ..
-    dockerfile: sandbox/services/Dockerfile
   image: witching-hour/sandbox-services:local
+  pull_policy: never
   networks: [sandbox]
   read_only: true
   tmpfs: [/tmp]
@@ -36,6 +36,10 @@ x-app: &app
 services:
   storefront:
     <<: *app
+    pull_policy: build
+    build:
+      context: ..
+      dockerfile: sandbox/services/Dockerfile
     environment:
       <<: *app-env
       SERVICE: storefront
@@ -108,7 +112,10 @@ services:
         limits: { cpus: "0.5", memory: 128M }
 
   toxiproxy:
-    image: ghcr.io/shopify/toxiproxy:2.9.0
+    # Built from the official release binary (see toxiproxy/Dockerfile), not pulled from ghcr.io.
+    build:
+      context: ./toxiproxy
+    image: witching-hour/toxiproxy:2.9.0
     networks: [sandbox]
     command: ["-host", "0.0.0.0", "-config", "/config/toxiproxy.json"]
     volumes:
@@ -148,6 +155,9 @@ services:
       GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
       GF_AUTH_DISABLE_LOGIN_FORM: "true"
       GF_SECURITY_ALLOW_EMBEDDING: "true"
+      # Served under /grafana so the game server can proxy it on its own origin.
+      GF_SERVER_ROOT_URL: "%(protocol)s://%(domain)s:%(http_port)s/grafana/"
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
       GF_ANALYTICS_REPORTING_ENABLED: "false"
       GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
       GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"

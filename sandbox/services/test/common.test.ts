@@ -195,3 +195,29 @@ describe('Metrics', () => {
     }
   });
 });
+
+describe('slow-gc pauses', () => {
+  it('stall only while enabled, for about the configured pause, on a share of requests', () => {
+    const t = new Toggles(quietLog);
+    expect(t.maybeStall(() => 0)).toBe(0);
+    t.set('slow-gc', { enabled: true, settings: { pause_ms: 30 } });
+    expect(t.maybeStall(() => 0.9)).toBe(0);
+    const ms = t.maybeStall(() => 0);
+    expect(ms).toBeGreaterThanOrEqual(30);
+    expect(ms).toBeLessThan(200);
+    expect(t.churned).toBeGreaterThan(0);
+  });
+
+  it('caps the pause whatever the haunting asks for', () => {
+    const t = new Toggles(quietLog);
+    t.set('slow-gc', { enabled: true, settings: { pause_ms: 5000 } });
+    expect(t.maybeStall(() => 0)).toBeLessThan(LIMITS.gcPauseMs + 200);
+  });
+
+  it('runs router hooks inside the request, before the handler', async () => {
+    const order: string[] = [];
+    const r = new Router().before((p) => void order.push(`hook ${p}`)).on('GET', '/x', () => (order.push('handler'), { status: 200 }));
+    await r.handle('GET', '/x', undefined);
+    expect(order).toEqual(['hook /x', 'handler']);
+  });
+});

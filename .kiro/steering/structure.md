@@ -12,8 +12,8 @@ sandbox/        Docker Compose system the player debugs: services/ (shop code), 
 server/         Workspace: game API, session lifecycle, narrator (Bedrock), terminal backend for `haunt` commands
 web/            Workspace: React + Vite player UI, xterm.js terminal, embedded Grafana
 crew-app/       Daemonwatch, the Kiro Crew App for scheduling team drills (manifest, agents, skills, ui/)
-infra/          Deployment infrastructure (AWS, including IAM roles for Bedrock). Not built yet
-scripts/        Developer scripts. Not built yet; the haunting validator lives in engine/scripts/
+infra/          Deployment: cloudflare/ (tunnel config + hosting guide). AWS/IAM for Bedrock not built yet
+scripts/        sandbox-status (health check), playthrough (bot playtest against the real sandbox), start-hosted. The haunting validator lives in engine/scripts/
 docs/           Writeup, playtest notes, Kiro journal
 ```
 

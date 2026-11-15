@@ -1,6 +1,6 @@
 import { createReadStream } from 'node:fs';
 import { stat } from 'node:fs/promises';
-import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
+import { createServer, request as httpRequest, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { extname, join, normalize, resolve } from 'node:path';
 import { WebSocketServer, type WebSocket } from 'ws';
 import { validateDrill, type DrillStore } from '../drills/drills.js';
@@ -13,6 +13,12 @@ export interface AppOptions {
   grafanaUrl: string;
   /** Built UIs to serve, if present: the player UI at /, Daemonwatch at /daemonwatch/. */
   staticDirs?: { web?: string; daemonwatch?: string };
+  /**
+   * When set, /grafana/* is proxied here (Grafana runs with serve_from_sub_path under
+   * /grafana), so the player page and Grafana share one origin. That keeps the
+   * embedded dashboard working behind a single public hostname (Cloudflare Tunnel).
+   */
+  grafanaUpstream?: string;
   /** Serves MCP at /mcp when set. See ../mcp/http-mcp.ts. */
   mcp?: (req: IncomingMessage, res: ServerResponse, body: unknown) => Promise<void>;
 }
@@ -168,6 +174,9 @@ export function createApp(opts: AppOptions): Server {
         res.end(JSON.stringify(body));
       };
       try {
+        if (opts.grafanaUpstream && (url.pathname === '/grafana' || url.pathname.startsWith('/grafana/'))) {
+          return proxyGrafana(opts.grafanaUpstream, req, res);
+        }
         if (url.pathname === '/mcp' && opts.mcp) {
           const body = method === 'POST' ? await readJson(req) : undefined;
           return await opts.mcp(req, res, body);
@@ -203,7 +212,9 @@ export function createApp(opts: AppOptions): Server {
   // the server answers {type:"output", ok, text} and pushes {type:"narration"|"ended"} events.
   const wss = new WebSocketServer({ noServer: true, maxPayload: 4 * 1024 });
   server.on('upgrade', (req, socket, head) => {
-    const m = /^\/api\/sessions\/([^/]+)\/terminal$/.exec(new URL(req.url ?? '/', 'http://localhost').pathname);
+    const pathname = new URL(req.url ?? '/', 'http://localhost').pathname;
+    if (opts.grafanaUpstream && pathname.startsWith('/grafana/')) return proxyGrafanaUpgrade(opts.grafanaUpstream, req, socket, head);
+    const m = /^\/api\/sessions\/([^/]+)\/terminal$/.exec(pathname);
     if (m === null) return socket.destroy();
     const id = decodeURIComponent(m[1]!);
     try {
@@ -248,4 +259,41 @@ function attachTerminal(ws: WebSocket, sessionId: string, sessions: SessionManag
     });
   });
   ws.on('close', off);
+}
+
+/** Plain HTTP proxy to Grafana. Grafana is read-only for anonymous viewers. */
+function proxyGrafana(upstream: string, req: IncomingMessage, res: ServerResponse): void {
+  const target = new URL(req.url ?? '/', upstream);
+  const preq = httpRequest(
+    target,
+    { method: req.method, headers: { ...req.headers, host: target.host } },
+    (pres) => {
+      res.writeHead(pres.statusCode ?? 502, pres.headers);
+      pres.pipe(res);
+    },
+  );
+  preq.on('error', () => {
+    if (!res.headersSent) res.writeHead(502, { 'content-type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Grafana is not reachable. Is the sandbox running?' }));
+  });
+  req.pipe(preq);
+}
+
+/** WebSocket upgrade proxy to Grafana (Grafana Live). */
+function proxyGrafanaUpgrade(upstream: string, req: IncomingMessage, socket: import('node:stream').Duplex, head: Buffer): void {
+  const target = new URL(req.url ?? '/', upstream);
+  const preq = httpRequest(target, { method: req.method, headers: { ...req.headers, host: target.host } });
+  preq.on('upgrade', (pres, psocket, phead) => {
+    const lines = [`HTTP/1.1 ${pres.statusCode ?? 101} ${pres.statusMessage ?? 'Switching Protocols'}`];
+    for (let i = 0; i < pres.rawHeaders.length; i += 2) lines.push(`${pres.rawHeaders[i]}: ${pres.rawHeaders[i + 1]}`);
+    socket.write(`${lines.join('\r\n')}\r\n\r\n`);
+    if (phead.length > 0) socket.write(phead);
+    if (head.length > 0) psocket.write(head);
+    psocket.pipe(socket).pipe(psocket);
+    psocket.on('error', () => socket.destroy());
+    socket.on('error', () => psocket.destroy());
+  });
+  preq.on('response', () => socket.destroy());
+  preq.on('error', () => socket.destroy());
+  preq.end();
 }

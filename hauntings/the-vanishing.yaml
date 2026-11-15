@@ -75,7 +75,7 @@ signals:
     kind: symptom
     description: After escalation step 2, storefront checkout p99 goes above 1s because publishes to the full queue are blocked.
     source: prometheus
-    query: 'histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket{service="storefront",route="/checkout"}[2m])))'
+    query: 'histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket{service="storefront",route="/api/checkout"}[2m])))'
     expect: { op: ">", value: 1 }
 
 verify:

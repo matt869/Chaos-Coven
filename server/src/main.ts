@@ -39,6 +39,7 @@ const sessions = new SessionManager({
   },
   timeScale: Number(env.WH_TIME_SCALE ?? 1),
   maxMinutes: Number(env.WH_SESSION_MAX_MINUTES ?? 45),
+  log,
 });
 
 const webDist = resolve(ROOT, 'web/dist');
@@ -50,7 +51,9 @@ const app = createApp({
   sessions,
   drills,
   mcp: createMcpHttpHandler({ engine, sessions, drills, port }),
-  grafanaUrl: env.WH_GRAFANA_URL ?? 'http://127.0.0.1:3000',
+  // Same-origin by default: the server proxies Grafana under /grafana.
+  grafanaUrl: env.WH_GRAFANA_URL ?? '/grafana',
+  grafanaUpstream: env.WH_GRAFANA_UPSTREAM ?? 'http://127.0.0.1:3000',
   staticDirs: {
     web: existsSync(webDist) ? webDist : undefined,
     daemonwatch: existsSync(daemonwatchDist) ? daemonwatchDist : undefined,

@@ -83,7 +83,7 @@ describe('SessionManager with the-vanishing', () => {
     const { sessions } = await setup();
     await expect(sessions.start('nope')).rejects.toThrow(SessionError);
     const view = await sessions.start('the-vanishing');
-    await expect(sessions.start('slow-whisper')).rejects.toMatchObject({ status: 409 });
+    await expect(sessions.start('slow-whisper')).rejects.toMatchObject({ status: 409, message: expect.stringMatching(/already on call.*ends on its own by \d\d:\d\d UTC/) });
     await sessions.end(view.id);
     const next = await sessions.start('slow-whisper');
     await sessions.end(next.id);

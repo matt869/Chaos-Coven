@@ -8,7 +8,7 @@ difficulty: hard
 target: cart
 
 page:
-  alert: "CartLatencyHigh: cart p99 latency above 300ms for 5 minutes."
+  alert: "CartMemoryGrowth (warning): cart resident memory keeps climbing and is not being released."
   narration: "Cart answers every request, just a little slower each minute. Something inside it keeps growing."
 
 fault:
@@ -35,7 +35,7 @@ escalation:
           service: cart
           toggle: slow-gc
           settings:
-            pause_ms: 150
+            pause_ms: 400
 
 signals:
   - id: cart-memory-rising
@@ -52,11 +52,11 @@ signals:
     expect: { op: ">", value: 80000000 }
   - id: cart-gc-time
     kind: cause
-    description: Cart spends more and more time in garbage collection.
+    description: Cart spends several times more of its time in garbage collection than when it is healthy.
     source: prometheus
     query: 'sum(rate(nodejs_gc_duration_seconds_sum{job="cart"}[2m]))'
     emptyValue: 0
-    expect: { op: ">", value: 0.02 }
+    expect: { op: ">", value: 0.002 }
   - id: cart-latency-high
     kind: symptom
     description: Cart p99 latency is above 300ms.
@@ -65,10 +65,10 @@ signals:
     expect: { op: ">", value: 0.3 }
   - id: postgres-fine
     kind: red-herring
-    description: Payments uses the same Postgres and stays fast, so the database is not the cause.
+    description: Payments uses the same Postgres and stays at its normal latency (under 1s), so the database is not the cause.
     source: prometheus
     query: 'histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket{service="payments"}[2m])))'
-    expect: { op: "<", value: 0.3 }
+    expect: { op: "<", value: 1 }
 
 verify:
   - id: cart-memory-normal

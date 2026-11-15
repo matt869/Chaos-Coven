@@ -92,6 +92,45 @@ describe('HTTP API', () => {
   });
 });
 
+describe('Grafana proxy', () => {
+  it('forwards /grafana/* to Grafana on the same origin', async () => {
+    const { createServer } = await import('node:http');
+    const seen: string[] = [];
+    const grafana = createServer((req, res) => {
+      seen.push(`${req.method} ${req.url}`);
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end('{"database":"ok"}');
+    });
+    await new Promise<void>((r) => grafana.listen(0, '127.0.0.1', r));
+    const ctx = await setup();
+    const server = createApp({
+      sessions: ctx.sessions,
+      drills: new DrillStore(undefined),
+      grafanaUrl: '/grafana',
+      grafanaUpstream: `http://127.0.0.1:${(grafana.address() as AddressInfo).port}`,
+    });
+    await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
+    close = () => {
+      server.close();
+      grafana.close();
+    };
+    const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+    const res = await fetch(`${base}/grafana/api/health?x=1`);
+    expect(await res.json()).toEqual({ database: 'ok' });
+    expect(seen).toEqual(['GET /grafana/api/health?x=1']);
+    expect(((await fetch(`${base}/api/config`).then((r) => r.json())) as { grafanaUrl: string }).grafanaUrl).toBe('/grafana');
+  });
+
+  it('answers 502 when Grafana is down', async () => {
+    const ctx = await setup();
+    const server = createApp({ sessions: ctx.sessions, drills: new DrillStore(undefined), grafanaUrl: '/grafana', grafanaUpstream: 'http://127.0.0.1:9' });
+    await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
+    close = () => server.close();
+    const res = await fetch(`http://127.0.0.1:${(server.address() as AddressInfo).port}/grafana/`);
+    expect(res.status).toBe(502);
+  });
+});
+
 describe('validateDrill', () => {
   const known = ['the-vanishing'];
   const good = { hauntingId: 'the-vanishing', team: 'Team', players: ['a'], scheduledFor: '2026-12-01T10:00:00Z' };

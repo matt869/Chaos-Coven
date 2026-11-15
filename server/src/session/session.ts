@@ -30,6 +30,8 @@ export interface SessionOptions {
   timeScale?: number;
   /** Sessions end (and revert) on their own after this long. */
   maxMinutes?: number;
+  /** Where operational problems are reported, such as an escalation step failing. */
+  log?: (message: string) => void;
 }
 
 interface Session {
@@ -117,7 +119,12 @@ export class SessionManager extends EventEmitter {
   }
 
   async start(hauntingId: string, meta: { player?: string; drillId?: string } = {}): Promise<SessionView> {
-    if (this.activeId !== undefined) throw new SessionError(409, 'a haunting is already running in the sandbox. End it first.');
+    if (this.activeId !== undefined) {
+      const current = this.get(this.activeId);
+      const minutes = Math.max(0, Math.round((this.clock() - current.startedAt) / 60_000));
+      const endsBy = new Date(current.startedAt + this.maxMs).toISOString().slice(11, 16);
+      throw new SessionError(409, `someone is already on call in the sandbox (started ${minutes} min ago; it ends on its own by ${endsBy} UTC at the latest). Try again then.`);
+    }
     let haunting: Haunting;
     try {
       haunting = this.opts.engine.get(hauntingId);
@@ -310,8 +317,9 @@ export class SessionManager extends EventEmitter {
         s.timeline.push({ at: this.clock(), type: 'escalation', text: `escalation step ${a.step}` });
         await this.narrate(s, 'escalation', a.narration, [s.haunting.page.alert]);
       }
-    } catch {
-      // The session may have ended between the timer firing and now.
+    } catch (err) {
+      // The session may have ended between the timer firing and now; anything else is a real problem.
+      if (s.status === 'active') this.opts.log?.(`escalation step ${step} of ${s.haunting.id} failed: ${(err as Error).message}`);
     }
   }
 

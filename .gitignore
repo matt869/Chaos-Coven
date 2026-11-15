@@ -11,3 +11,6 @@ server/.data/
 crew-app/ui/dist/standalone/
 # Crew writes the app secret next to the installed app
 .app_secret
+scripts/.playthrough/
+# Cloudflare tunnel config with your tunnel ID and paths
+infra/cloudflare/config.yml

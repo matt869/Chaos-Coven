@@ -25,3 +25,12 @@ How Kiro features shaped the build. Newest entries at the bottom. The `kiro-jour
 - the agents' rules moved from `.kiro/steering` into the app's own skills, so the installed copy works without the repo
 
 The docs left the proxy header layout and secret source open, so those sit in one file each, flagged. A fast-check property on the manifest path checker failed first: it rejected a folder named `..-`. The check compared characters, not whole path segments.
+
+**2026-11-15: First run against the real sandbox.** Every test had passed against fakes; the first real run still found bugs that fakes could not:
+- The services image could not be pulled from ghcr.io on this machine ("denied"), so Toxiproxy is now built from its checksum-verified release binary.
+- Compose raced five parallel builds of the same image; only storefront builds it now.
+- The Vanishing's latency signal asked for `route="/checkout"`, but the real route is `/api/checkout`, so the query matched nothing. A fake returns whatever the test tells it to, so it couldn't catch this. Every haunting query is now checked against live metrics.
+- Slow Whisper's leak used Buffers, which live outside the V8 heap, so heap and GC metrics never moved. Its "GC pause" froze the event loop between requests, so it never showed in measured latency. Both now behave like real Node failures.
+- Two thresholds were wrong for this shop: one red herring claimed payments was slow when it was normal.
+
+A bot playtest (`npm run playthrough`) now plays every haunting end to end and checks the evidence appears, the fix verifies, and the sandbox recovers.

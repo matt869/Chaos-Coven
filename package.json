@@ -23,6 +23,9 @@
     "dev:server": "npm run dev -w server",
     "dev:web": "npm run dev -w web",
     "dev:daemonwatch": "npm run dev -w crew-app/ui",
-    "check:crew-manifest": "node crew-app/scripts/check-manifest.mjs"
+    "check:crew-manifest": "node crew-app/scripts/check-manifest.mjs",
+    "sandbox:status": "node scripts/sandbox-status.mjs",
+    "playthrough": "node scripts/playthrough.mjs",
+    "start:hosted": "node scripts/start-hosted.mjs"
   }
 }

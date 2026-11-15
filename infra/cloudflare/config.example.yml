@@ -1,0 +1,21 @@
+# Cloudflare Tunnel config for a hosted Witching Hour.
+# Copy to infra/cloudflare/config.yml (gitignored), fill in the three placeholders,
+# then run:  cloudflared tunnel --config infra/cloudflare/config.yml run
+#
+# Only the game server is exposed. It serves the player UI, the API, the terminal
+# WebSocket, Daemonwatch (/daemonwatch/) and Grafana (/grafana/) on one origin.
+# NEVER add rules for the sandbox's own ports: 3000 (Grafana direct), 3100 (Loki),
+# 8081-8084 (service admin), 8474 (Toxiproxy), 9090 (Prometheus).
+
+tunnel: <TUNNEL_ID>
+credentials-file: <PATH_TO_HOME>/.cloudflared/<TUNNEL_ID>.json
+
+ingress:
+  # MCP can apply hauntings: never public. (The server also refuses forwarded requests.)
+  - hostname: play.example.com
+    path: ^/mcp
+    service: http_status:404
+  - hostname: play.example.com
+    service: http://127.0.0.1:4000
+  # Anything else: nothing.
+  - service: http_status:404

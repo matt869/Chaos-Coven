@@ -6,7 +6,7 @@ export default defineConfig({
   server: {
     port: 5173,
     // The game server owns the API and the terminal WebSocket.
-    proxy: { '/api': { target: 'http://127.0.0.1:4000', ws: true } },
+    proxy: { '/api': { target: 'http://127.0.0.1:4000', ws: true }, '/grafana': { target: 'http://127.0.0.1:4000', ws: true } },
   },
   test: { environment: 'jsdom', include: ['test/**/*.test.tsx'] },
 } as never);

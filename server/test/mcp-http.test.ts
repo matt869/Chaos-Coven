@@ -80,6 +80,18 @@ describe('MCP over HTTP at /mcp', () => {
     expect(text(r).players).toEqual(['sam']);
   });
 
+  it('refuses requests forwarded through a tunnel, even from loopback', async () => {
+    const { port } = await start();
+    for (const header of ['cf-connecting-ip', 'cf-ray', 'x-forwarded-for']) {
+      const res = await fetch(`http://127.0.0.1:${port}/mcp`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream', [header]: '203.0.113.7' },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }),
+      });
+      expect(res.status, header).toBe(403);
+    }
+  });
+
   it('rejects requests whose Host is not loopback (DNS rebinding)', async () => {
     const { port } = await start();
     const res = await fetch(`http://127.0.0.1:${port}/mcp`, {
