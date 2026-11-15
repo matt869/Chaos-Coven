@@ -14,3 +14,5 @@ crew-app/ui/dist/standalone/
 scripts/.playthrough/
 # Cloudflare tunnel config with your tunnel ID and paths
 infra/cloudflare/config.yml
+# The current public link and access code
+scripts/.hosting/

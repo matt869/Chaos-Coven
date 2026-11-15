@@ -4,6 +4,7 @@ import { createServer, request as httpRequest, type IncomingMessage, type Server
 import { extname, join, normalize, resolve } from 'node:path';
 import { WebSocketServer, type WebSocket } from 'ws';
 import { validateDrill, type DrillStore } from '../drills/drills.js';
+import type { AccessGate } from './access.js';
 import { SessionError, type SessionManager } from '../session/session.js';
 
 export interface AppOptions {
@@ -19,6 +20,8 @@ export interface AppOptions {
    * embedded dashboard working behind a single public hostname (Cloudflare Tunnel).
    */
   grafanaUpstream?: string;
+  /** Optional access-code gate for hosting without Cloudflare Access. See ./access.ts. */
+  access?: AccessGate;
   /** Serves MCP at /mcp when set. See ../mcp/http-mcp.ts. */
   mcp?: (req: IncomingMessage, res: ServerResponse, body: unknown) => Promise<void>;
 }
@@ -174,6 +177,9 @@ export function createApp(opts: AppOptions): Server {
         res.end(JSON.stringify(body));
       };
       try {
+        // /mcp has its own, stricter guard (loopback only, never forwarded), so local
+        // agents keep working without the access cookie.
+        if (opts.access && url.pathname !== '/mcp' && !(await opts.access.check(req, res, url.pathname))) return;
         if (opts.grafanaUpstream && (url.pathname === '/grafana' || url.pathname.startsWith('/grafana/'))) {
           return proxyGrafana(opts.grafanaUpstream, req, res);
         }
@@ -213,6 +219,7 @@ export function createApp(opts: AppOptions): Server {
   const wss = new WebSocketServer({ noServer: true, maxPayload: 4 * 1024 });
   server.on('upgrade', (req, socket, head) => {
     const pathname = new URL(req.url ?? '/', 'http://localhost').pathname;
+    if (opts.access && !opts.access.allowsUpgrade(req)) return socket.destroy();
     if (opts.grafanaUpstream && pathname.startsWith('/grafana/')) return proxyGrafanaUpgrade(opts.grafanaUpstream, req, socket, head);
     const m = /^\/api\/sessions\/([^/]+)\/terminal$/.exec(pathname);
     if (m === null) return socket.destroy();

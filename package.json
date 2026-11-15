@@ -26,6 +26,7 @@
     "check:crew-manifest": "node crew-app/scripts/check-manifest.mjs",
     "sandbox:status": "node scripts/sandbox-status.mjs",
     "playthrough": "node scripts/playthrough.mjs",
-    "start:hosted": "node scripts/start-hosted.mjs"
+    "start:hosted": "node scripts/start-hosted.mjs",
+    "host:quick": "node scripts/host-quick.mjs"
   }
 }

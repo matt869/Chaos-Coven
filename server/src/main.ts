@@ -3,6 +3,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createSandboxEngine, loadConfig } from '@witching-hour/engine';
 import { DrillStore } from './drills/drills.js';
+import { createAccessGate } from './http/access.js';
 import { createApp } from './http/app.js';
 import { createMcpHttpHandler } from './mcp/http-mcp.js';
 import { BedrockNarrator, StaticNarrator, type Narrator } from './narrator/bedrock.js';
@@ -47,7 +48,10 @@ const webDist = resolve(ROOT, 'web/dist');
 const daemonwatchDist = resolve(ROOT, 'crew-app/ui/dist/standalone');
 const port = Number(env.PORT ?? 4000);
 const drills = new DrillStore(resolve(env.WH_DATA_DIR ?? resolve(ROOT, 'server/.data'), 'drills.json'));
+const access = env.WH_ACCESS_CODE ? createAccessGate(env.WH_ACCESS_CODE) : undefined;
+if (access) log('access code required for every page (WH_ACCESS_CODE is set)');
 const app = createApp({
+  access,
   sessions,
   drills,
   mcp: createMcpHttpHandler({ engine, sessions, drills, port }),

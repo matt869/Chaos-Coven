@@ -53,7 +53,12 @@ When you're done: `npm run sandbox:down`.
 
 ### Hosting it (Cloudflare)
 
-The game needs Docker, so it can't run on Cloudflare Pages or Workers. Run the stack on one machine and put a Cloudflare Tunnel with Cloudflare Access in front of it: see [infra/cloudflare/README.md](infra/cloudflare/README.md). `npm run start:hosted` starts the server with demo-friendly timings.
+The game needs Docker, so it can't run on Cloudflare Pages or Workers. Run the stack on one machine and put a Cloudflare Tunnel in front of it:
+
+- **No domain:** `npm run host:quick` opens a free `*.trycloudflare.com` link protected by a random access code, and prints both.
+- **Your own domain:** a named tunnel with Cloudflare Access, using `npm run start:hosted`.
+
+Both are in [infra/cloudflare/README.md](infra/cloudflare/README.md).
 
 ### Settings
 

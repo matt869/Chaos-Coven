@@ -55,6 +55,16 @@ The game has no login of its own: it was designed to be reachable only from your
 - `/mcp` is blocked in the tunnel config, and the server also refuses any MCP request that came through a proxy.
 - Put the link in the README's "Play it" line once it works.
 
-## Quick temporary link (no Access)
+## No domain? Quick Tunnel with an access code
 
-For a five-minute check, `cloudflared tunnel --url http://127.0.0.1:4000` prints a random `*.trycloudflare.com` link with no account needed. **Anyone with that link can play, and there's no login.** Use it only briefly, and stop it with Ctrl+C.
+Cloudflare Access needs your own domain. Without one, use a free Quick Tunnel (no account needed), which the game protects with an access code instead:
+
+```bash
+npm run build && npm run sandbox:up && npm run host:quick
+```
+
+It checks the sandbox, starts the game server with demo timings, opens a `https://<random>.trycloudflare.com` link, and prints the link plus a random access code (also saved to `scripts/.hosting/link.txt`, which is gitignored). Visitors must enter the code before they see anything: pages, API, terminal and Grafana. Wrong guesses are capped at 10 per 10 minutes.
+
+- The link changes every time you run it, and it works only while that terminal and Docker are running.
+- To pick your own code, set `WH_ACCESS_CODE` (at least 8 characters) before running.
+- The access code also works with a named tunnel on your own domain if you want both.
