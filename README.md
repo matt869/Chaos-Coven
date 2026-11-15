@@ -57,6 +57,7 @@ The game needs Docker, so it can't run on Cloudflare Pages or Workers. Run the s
 
 - **No domain:** `npm run host:quick` opens a free `*.trycloudflare.com` link protected by a random access code, and prints both.
 - **Your own domain:** a named tunnel with Cloudflare Access, using `npm run start:hosted`.
+- **24/7 with your PC off:** one small Azure VM (works with Azure for Students): [infra/azure/README.md](infra/azure/README.md).
 
 Both are in [infra/cloudflare/README.md](infra/cloudflare/README.md).
 
