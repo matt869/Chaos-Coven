@@ -45,23 +45,30 @@ export function safeNext(next: string | null | undefined): string {
 
 const page = (message: string, next: string) => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="color-scheme" content="dark light"><title>Witching Hour: access code</title>
+<meta name="color-scheme" content="dark"><title>Witching Hour: access code</title>
 <style>
-body{margin:0;min-height:100vh;display:grid;place-items:center;font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;background:#0e0b16;color:#ece7f6}
-@media (prefers-color-scheme: light){body{background:#f8f6fc;color:#1d1530}}
-form{width:min(360px,90vw);display:grid;gap:12px}
-h1{margin:0;font-size:1.4rem}
+/* Same night-shift palette as the player UI (web/src/styles.css). Plain HTML: no app bundle loads before the code. */
+body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;box-sizing:border-box;font-family:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;font-size:17px;line-height:1.55;background:#232733;color:#ece6d8}
+form{width:min(420px,100%);display:grid;gap:14px;background:#333948;border:1px solid #444b5e;border-radius:14px;padding:22px;box-shadow:0 18px 40px -24px rgba(0,0,0,.7)}
+.screen{background:#1d1a14;border:1px solid #3a3426;border-radius:8px;padding:12px 16px;color:#f0a33a;font-family:'JetBrains Mono','Cascadia Mono',ui-monospace,monospace;box-shadow:inset 0 2px 8px rgba(0,0,0,.55)}
+.screen small{display:block;font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;opacity:.8}
+.screen p{margin:4px 0 0}
+h1{margin:0;font-family:'Iowan Old Style','Palatino Linotype',Georgia,serif;font-size:2.2rem;font-weight:600;letter-spacing:-.02em;line-height:1.05}
+h1 span{color:#f0a33a}
+p.lede{margin:0;color:#b0b5c3}
 label{font-weight:600}
-input{font:inherit;padding:10px;border-radius:8px;border:1px solid #3a2f52;background:transparent;color:inherit}
-button{font:inherit;padding:10px;border-radius:8px;border:0;background:#c084fc;color:#1a0b2e;font-weight:600;cursor:pointer}
-:focus-visible{outline:3px solid #c084fc;outline-offset:2px}
-.msg{color:#f87171;min-height:1.2em;margin:0}
+input{font:inherit;font-family:'JetBrains Mono',ui-monospace,monospace;letter-spacing:.08em;padding:11px 12px;border-radius:6px;border:1px solid #444b5e;background:#232733;color:inherit}
+button{font:inherit;font-weight:600;min-height:46px;padding:10px;border-radius:6px;border:1px solid #f0a33a;background:#f0a33a;color:#24180a;cursor:pointer}
+button:hover{background:#f6b55c}
+:focus-visible{outline:3px solid #f0a33a;outline-offset:3px}
+.msg{color:#ff7a6b;min-height:1.2em;margin:0}
 </style></head><body>
 <form method="post" action="/access">
-<h1>Witching Hour</h1>
-<p>This shift is invite-only. Enter the access code you were given.</p>
+<div class="screen" aria-hidden="true"><small>page &middot; invite only</small><p>Access code required to take the pager.</p></div>
+<h1>Witching Hour<span>.</span></h1>
+<p class="lede">An on-call training game. Enter the access code you were given to start your shift.</p>
 <label for="code">Access code</label>
-<input id="code" name="code" type="password" autocomplete="current-password" required autofocus>
+<input id="code" name="code" type="password" autocomplete="current-password" required autofocus placeholder="xxxx-xxxx-xxxx">
 <input type="hidden" name="next" value="${next.replace(/[^\w\-./?=&%#]/g, '')}">
 <button type="submit">Start my shift</button>
 <p class="msg" role="alert">${message}</p>
