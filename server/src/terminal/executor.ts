@@ -46,8 +46,8 @@ export async function execute(cmd: Command, { control, observability }: ExecDeps
       const rows = await control.status();
       if (rows.length === 0) return 'no sandbox containers found. Is the sandbox running?';
       return [
-        pad('SERVICE', 12) + pad('CONTAINER', 40) + pad('STATE', 10) + 'HEALTH',
-        ...rows.map((r) => pad(r.service, 12) + pad(r.name, 40) + pad(r.state, 10) + r.health),
+        pad('SERVICE', 12) + pad('CONTAINER', 15) + pad('STATE', 9) + 'HEALTH',
+        ...rows.map((r) => pad(r.service, 12) + pad(r.name, 15) + pad(r.state, 9) + r.health),
       ].join('\n');
     }
     case 'logs': {

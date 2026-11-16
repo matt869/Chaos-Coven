@@ -43,7 +43,11 @@ export class DockerSandboxControl implements SandboxControl {
   async status(): Promise<ContainerRow[]> {
     const rows: ContainerRow[] = [];
     for (const service of SERVICES) {
-      for (const c of await this.docker.listContainers(service)) rows.push({ service, name: c.name, state: c.state, health: c.health });
+      // Drop the compose project prefix: "witching-hour-sandbox-worker-1" -> "worker-1".
+      const prefix = `${this.opts.composeProject}-`;
+      for (const c of await this.docker.listContainers(service)) {
+        rows.push({ service, name: c.name.startsWith(prefix) ? c.name.slice(prefix.length) : c.name, state: c.state, health: c.health });
+      }
     }
     return rows;
   }

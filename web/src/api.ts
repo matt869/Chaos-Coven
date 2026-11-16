@@ -6,6 +6,7 @@ export interface HauntingSummary {
   name: string;
   difficulty: 'easy' | 'medium' | 'hard';
   escalationSteps: number;
+  parSeconds: number;
 }
 
 export interface VerifySummary {
@@ -19,6 +20,7 @@ export interface SessionView {
   hauntingId: string;
   hauntingName: string;
   difficulty: HauntingSummary['difficulty'];
+  parSeconds: number;
   player?: string;
   status: 'active' | 'ended';
   startedAt: number;
@@ -80,6 +82,16 @@ export const api = {
   end: (id: string) => call<Postmortem>('POST', `/api/sessions/${id}/end`),
   postmortem: (id: string) => call<Postmortem>('GET', `/api/sessions/${id}/postmortem`),
 };
+
+/** Observed metric values, readable: 2.7528680157817065 -> 2.75, 190038016 -> 190M. */
+export function formatObserved(v: number | null): string {
+  if (v === null || Number.isNaN(v)) return 'no data';
+  const abs = Math.abs(v);
+  if (abs >= 1e9) return `${+(v / 1e9).toPrecision(3)}G`;
+  if (abs >= 1e6) return `${+(v / 1e6).toPrecision(3)}M`;
+  if (abs >= 1e4) return `${+(v / 1e3).toPrecision(3)}k`;
+  return String(+v.toPrecision(3));
+}
 
 export function formatDuration(seconds: number): string {
   const m = Math.floor(seconds / 60);

@@ -1,10 +1,21 @@
 import { lazy, Suspense, useEffect, useState, type FormEvent } from 'react';
-import { api, type HauntingSummary, type Postmortem as PM, type SessionView } from './api';
+import { api, formatDuration, type HauntingSummary, type Postmortem as PM, type SessionView } from './api';
+
 // Loaded on demand: the session screen pulls in xterm.js, the postmortem is only needed at the end.
 const Session = lazy(() => import('./Session').then((m) => ({ default: m.Session })));
 const Postmortem = lazy(() => import('./Postmortem').then((m) => ({ default: m.Postmortem })));
 
 type Screen = { kind: 'pick' } | { kind: 'play'; session: SessionView } | { kind: 'postmortem'; pm: PM };
+
+const SHOP = ['storefront', 'cart', 'payments', 'worker', 'postgres', 'queue'];
+
+/** A real sequence, so numbering it is honest. */
+const SHIFT = [
+  { step: 'Paged', text: 'An alert lands. The clock starts; par is your target.' },
+  { step: 'Investigate', text: 'Dashboards, logs and haunt commands. One clue is a red herring.' },
+  { step: 'Call it', text: 'Name the failing component and why, then apply a fix.' },
+  { step: 'Debrief', text: 'Live checks verify the fix, and the postmortem scores the shift.' },
+];
 
 export function Picker({ hauntings, onStart, error }: { hauntings: HauntingSummary[]; onStart: (id: string, player: string) => void; error?: string }) {
   const [choice, setChoice] = useState('');
@@ -14,31 +25,64 @@ export function Picker({ hauntings, onStart, error }: { hauntings: HauntingSumma
     if (choice) onStart(choice, player.trim());
   };
   return (
-    <form className="picker" onSubmit={submit} aria-labelledby="pick-title">
-      <h2 id="pick-title">Choose a haunting</h2>
-      <p className="muted">A ghost will break something real in the sandbox. You get paged, you investigate, you fix it.</p>
-      <fieldset>
-        <legend>Haunting</legend>
-        {hauntings.length === 0 && <p>No hauntings loaded. Is the server running?</p>}
-        {hauntings.map((h) => (
-          <label key={h.id} className="choice">
-            <input type="radio" name="haunting" value={h.id} checked={choice === h.id} onChange={() => setChoice(h.id)} />
-            <span className="choice-name">{h.name}</span>
-            <span className={`tag tag-${h.difficulty}`}>{h.difficulty}</span>
-          </label>
-        ))}
-      </fieldset>
-      <label htmlFor="player">Your name (optional)</label>
-      <input id="player" value={player} onChange={(e) => setPlayer(e.target.value)} maxLength={40} autoComplete="nickname" />
-      <button type="submit" className="primary" disabled={!choice}>
-        Start the night shift
-      </button>
-      {error && (
-        <p className="error" role="alert">
-          {error}
+    <section className="picker" aria-labelledby="pick-title">
+      <div className="picker-intro">
+        <p className="kicker">Witching Hour · on-call training</p>
+        <h1 id="pick-title" tabIndex={-1}>
+          It&rsquo;s 3&nbsp;a.m. and the pager just went off.
+        </h1>
+        <p className="lede">
+          A ghost has broken <strong>one thing</strong> in a six-service shop. You get the same tools as a real shift: live Grafana dashboards, the logs, and a terminal
+          that only takes <code>haunt</code> commands. Name the root cause, fix it, and read your postmortem.
         </p>
-      )}
-    </form>
+        <ul className="shop-map" aria-label="Services in the haunted shop">
+          {SHOP.map((s) => (
+            <li key={s}>{s}</li>
+          ))}
+        </ul>
+        <ol className="shift-steps" aria-label="How a shift works">
+          {SHIFT.map((x, i) => (
+            <li key={x.step}>
+              <span className="n data">{String(i + 1).padStart(2, '0')}</span>
+              <span className="step">{x.step}</span>
+              <span className="muted">{x.text}</span>
+            </li>
+          ))}
+        </ol>
+      </div>
+
+      <form className="rota" onSubmit={submit}>
+        <fieldset>
+          <legend>Tonight&rsquo;s rota</legend>
+          {hauntings.length === 0 && <p className="muted">No hauntings loaded. Is the game server running?</p>}
+          {hauntings.map((h) => (
+            <label key={h.id} className="rota-row">
+              <input type="radio" name="haunting" value={h.id} checked={choice === h.id} onChange={() => setChoice(h.id)} />
+              <span className="rota-name">{h.name}</span>
+              <span className={`threat threat-${h.difficulty}`}>{h.difficulty}</span>
+              <span className="rota-meta">
+                <span>par {formatDuration(h.parSeconds)}</span>
+                <span>
+                  escalates {h.escalationSteps}×
+                </span>
+              </span>
+            </label>
+          ))}
+        </fieldset>
+        <div className="player">
+          <label htmlFor="player">Your name, for the postmortem (optional)</label>
+          <input id="player" value={player} onChange={(e) => setPlayer(e.target.value)} maxLength={40} autoComplete="nickname" />
+        </div>
+        <button type="submit" className="primary start" disabled={!choice}>
+          {choice ? 'Take the pager' : 'Pick a haunting to take the pager'}
+        </button>
+        {error && (
+          <p className="error" role="alert">
+            {error}
+          </p>
+        )}
+      </form>
+    </section>
   );
 }
 
@@ -57,7 +101,7 @@ export function App() {
 
   useEffect(() => {
     // Move focus to the new screen's heading for keyboard and screen-reader users.
-    document.querySelector<HTMLElement>('main h2')?.focus();
+    document.querySelector<HTMLElement>('main h1, main h2')?.focus();
   }, [screen.kind]);
 
   return (
@@ -66,9 +110,14 @@ export function App() {
         Skip to content
       </a>
       <header className="top">
-        <h1>
-          Witching Hour <span className="muted">on-call training</span>
-        </h1>
+        <span className="wordmark">
+          Witching Hour<span className="moon">.</span>
+        </span>
+        <nav aria-label="Other pages">
+          <a href="/daemonwatch/">
+            <span className="wide-only">Daemonwatch: </span>team drills
+          </a>
+        </nav>
       </header>
       <main id="main">
         {screen.kind === 'pick' && (
@@ -84,7 +133,13 @@ export function App() {
             }}
           />
         )}
-        <Suspense fallback={<p className="muted" role="status">Loading…</p>}>
+        <Suspense
+          fallback={
+            <p className="muted" role="status">
+              Opening the shift…
+            </p>
+          }
+        >
           {screen.kind === 'play' && <Session initial={screen.session} grafanaUrl={grafanaUrl} onEnded={(pm) => setScreen({ kind: 'postmortem', pm })} />}
           {screen.kind === 'postmortem' && <Postmortem pm={screen.pm} onAgain={() => setScreen({ kind: 'pick' })} />}
         </Suspense>

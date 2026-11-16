@@ -1,121 +1,157 @@
 import { formatDuration, type Postmortem as PM } from './api';
 
-const KIND_LABEL = { symptom: 'Symptom', cause: 'Cause', 'red-herring': 'Red herring' } as const;
+const KIND_LABEL = { symptom: 'symptom', cause: 'cause', 'red-herring': 'red herring' } as const;
 
+/** The shift report: the score on the left, the ledger and evidence on the right. */
 export function Postmortem({ pm, onAgain }: { pm: PM; onAgain: () => void }) {
   const s = pm.score;
   const duration = Math.round((pm.endedAt - pm.startedAt) / 1000);
+  const at = (t: number) => formatDuration(Math.max(0, (t - pm.startedAt) / 1000));
+  const causes = pm.signals.filter((x) => x.kind === 'cause');
+  const missed = causes.filter((x) => !x.checked);
+  const missedCauses = missed.length;
+
   return (
-    <article className="postmortem" aria-labelledby="pm-title">
-      <header>
-        <h2 id="pm-title">Postmortem: {pm.hauntingName}</h2>
+    <article className="report" aria-labelledby="pm-title">
+      <header className="report-score">
+        <p className="kicker">Shift report{pm.player ? ` · ${pm.player}` : ''}</p>
+        <h2 id="pm-title" tabIndex={-1}>
+          {pm.hauntingName}
+        </h2>
         <p className="score" aria-label={`Score ${s.total} out of ${s.max}`}>
           <span className="score-value">{s.total}</span>
           <span className="score-max">/ {s.max}</span>
         </p>
-        <p className="narration-line">{pm.closing}</p>
-        <p className="muted">
-          {pm.endedBecause === 'timeout' ? 'Time ran out' : 'Session ended'} after {formatDuration(duration)}.
-          {pm.hintsUsed > 0 && ` You used ${pm.hintsUsed} hint${pm.hintsUsed === 1 ? '' : 's'}.`}
+        <p className="closing">{pm.closing}</p>
+        <p className="muted data">
+          {pm.endedBecause === 'timeout' ? 'time ran out' : 'shift ended'} after {formatDuration(duration)}
+          {pm.hintsUsed > 0 && ` · ${pm.hintsUsed} hint${pm.hintsUsed === 1 ? '' : 's'}`}
+          {causes.length > 0 && ` · ${causes.length - missedCauses}/${causes.length} cause signals checked`}
         </p>
+        <aside className="next-shift" aria-labelledby="pm-next">
+          <h3 id="pm-next">Next shift, check first</h3>
+          {missed.length === 0 ? (
+            <p>You checked every cause signal. Next time, try to name the component sooner.</p>
+          ) : (
+            <ul>
+              {missed.slice(0, 3).map((m) => (
+                <li key={m.id}>{m.description}</li>
+              ))}
+            </ul>
+          )}
+        </aside>
+        <button type="button" className="primary" onClick={onAgain}>
+          Take the pager again
+        </button>
       </header>
 
-      <section aria-labelledby="pm-score">
-        <h3 id="pm-score">How the score adds up</h3>
-        <table className="breakdown">
-          <tbody>
-            <tr>
-              <th scope="row">Detection</th>
-              <td>
-                {s.detection.points} / {s.detection.max}
-              </td>
-              <td className="muted">
-                {s.detection.seconds === null
-                  ? 'You never named the failing component.'
-                  : `Named the right component after ${formatDuration(s.detection.seconds)} (par ${formatDuration(s.detection.parSeconds)}).`}
-              </td>
-            </tr>
-            <tr>
-              <th scope="row">Root cause</th>
-              <td>
-                {s.rootCause.points} / {s.rootCause.max}
-              </td>
-              <td className="muted">
-                {s.rootCause.componentCorrect
-                  ? `Right component; your explanation covered ${s.rootCause.keywordGroupsMatched} of ${s.rootCause.keywordGroupsRequired} key points.`
-                  : 'Wrong or missing component.'}
-              </td>
-            </tr>
-            <tr>
-              <th scope="row">Fix</th>
-              <td>
-                {s.fix.points} / {s.fix.max}
-              </td>
-              <td className="muted">{s.fix.verified ? 'Verified by live health checks.' : 'Never verified. Run Verify fix after you change something.'}</td>
-            </tr>
-            <tr>
-              <th scope="row">Penalties</th>
-              <td>−{s.penalties.points}</td>
-              <td className="muted">{s.penalties.items.length === 0 ? 'No harmful actions.' : `${s.penalties.items.length} harmful action(s), listed below.`}</td>
-            </tr>
-          </tbody>
-        </table>
-      </section>
+      <div className="report-body">
+        <section aria-labelledby="pm-score">
+          <h3 id="pm-score">How the score adds up</h3>
+          <table className="ledger">
+            <tbody>
+              <tr>
+                <th scope="row">Detection</th>
+                <td className="pts">
+                  {s.detection.points} / {s.detection.max}
+                </td>
+                <td className="why">
+                  {s.detection.seconds === null
+                    ? 'You never named the failing component.'
+                    : `Right component named at ${formatDuration(s.detection.seconds)}, par ${formatDuration(s.detection.parSeconds)}.`}
+                </td>
+              </tr>
+              <tr>
+                <th scope="row">Root cause</th>
+                <td className="pts">
+                  {s.rootCause.points} / {s.rootCause.max}
+                </td>
+                <td className="why">
+                  {s.rootCause.componentCorrect
+                    ? `Right component; your explanation covered ${s.rootCause.keywordGroupsMatched} of ${s.rootCause.keywordGroupsRequired} key points.`
+                    : 'Wrong or missing component.'}
+                </td>
+              </tr>
+              <tr>
+                <th scope="row">Fix</th>
+                <td className="pts">
+                  {s.fix.points} / {s.fix.max}
+                </td>
+                <td className="why">{s.fix.verified ? 'Verified by live health checks.' : 'Never verified. Press Verify fix after you change something.'}</td>
+              </tr>
+              <tr>
+                <th scope="row">Penalties</th>
+                <td className="pts">−{s.penalties.points}</td>
+                <td className="why">{s.penalties.items.length === 0 ? 'No harmful actions.' : `${s.penalties.items.length} harmful action(s), listed below.`}</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
 
-      <section aria-labelledby="pm-what">
-        <h3 id="pm-what">What happened</h3>
-        <p>{pm.whatHappened}</p>
-        <h4>The fix</h4>
-        <p>{pm.theFix}</p>
-        {pm.yourDiagnosis && (
-          <>
-            <h4>Your diagnosis</h4>
-            <p>
-              <strong>{pm.yourDiagnosis.component}</strong>: {pm.yourDiagnosis.summary}
-            </p>
-          </>
+        <section aria-labelledby="pm-what">
+          <h3 id="pm-what">What happened</h3>
+          <dl className="facts">
+            <dt>Root cause</dt>
+            <dd>{pm.whatHappened}</dd>
+            <dt>The fix</dt>
+            <dd>{pm.theFix}</dd>
+            {pm.yourDiagnosis && (
+              <>
+                <dt>You said</dt>
+                <dd>
+                  <code>{pm.yourDiagnosis.component}</code> {pm.yourDiagnosis.summary}
+                </dd>
+              </>
+            )}
+          </dl>
+        </section>
+
+        {s.penalties.items.length > 0 && (
+          <section aria-labelledby="pm-harm">
+            <h3 id="pm-harm">Harmful actions</h3>
+            <ul className="harm">
+              {s.penalties.items.map((p, i) => (
+                <li key={i}>
+                  <span className="data">−{p.penalty}</span>
+                  <span>
+                    <code>{p.command}</code> {p.reason}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
         )}
-      </section>
 
-      {s.penalties.items.length > 0 && (
-        <section aria-labelledby="pm-harm">
-          <h3 id="pm-harm">Harmful actions</h3>
-          <ul>
-            {s.penalties.items.map((p, i) => (
-              <li key={i}>
-                <code>{p.command}</code> (−{p.penalty}): {p.reason}
+        <section aria-labelledby="pm-signals">
+          <h3 id="pm-signals">The evidence</h3>
+          <ul className="evidence">
+            {pm.signals.map((sig) => (
+              <li key={sig.id}>
+                <span className={`seen ${sig.checked ? 'ok' : 'missed'}`}>
+                  {sig.checked ? '✓ checked' : '✗ missed'}
+                  <span className="tag evidence-kind">
+                    {KIND_LABEL[sig.kind]}
+                  </span>
+                </span>
+                <span>{sig.description}</span>
               </li>
             ))}
           </ul>
         </section>
-      )}
 
-      <section aria-labelledby="pm-signals">
-        <h3 id="pm-signals">The evidence</h3>
-        <ul className="signals">
-          {pm.signals.map((sig) => (
-            <li key={sig.id}>
-              <span className={`tag tag-${sig.kind}`}>{KIND_LABEL[sig.kind]}</span> {sig.description}{' '}
-              <span className={sig.checked ? 'ok' : 'missed'}>{sig.checked ? '(you checked this)' : '(missed)'}</span>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section aria-labelledby="pm-timeline">
-        <h3 id="pm-timeline">Timeline</h3>
-        <ol className="timeline">
-          {pm.timeline.map((e, i) => (
-            <li key={i}>
-              <time>{formatDuration(Math.max(0, (e.at - pm.startedAt) / 1000))}</time> <span className="tag">{e.type}</span> {e.text}
-            </li>
-          ))}
-        </ol>
-      </section>
-
-      <button type="button" className="primary" onClick={onAgain}>
-        Face another haunting
-      </button>
+        <section aria-labelledby="pm-timeline">
+          <h3 id="pm-timeline">Timeline</h3>
+          <ol className="timeline">
+            {pm.timeline.map((e, i) => (
+              <li key={i} className={`ev-${e.type}`}>
+                <time>{at(e.at)}</time>
+                <span className="kind">{e.type}</span>
+                <span className="text">{e.text}</span>
+              </li>
+            ))}
+          </ol>
+        </section>
+      </div>
     </article>
   );
 }

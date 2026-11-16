@@ -1,25 +1,206 @@
+/* Daemonwatch standalone page: the same night-shift palette and type as the player UI. */
 :root {
-  --bg: #0e0b16; --panel: #1a1426; --line: #3a2f52; --text: #ece7f6; --muted: #b3a9c9;
-  --accent: #c084fc; --accent-ink: #1a0b2e; --bad: #f87171;
-  color-scheme: dark; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; line-height: 1.5;
+  --ground: #232733;
+  --panel: #2b303d;
+  --panel-raised: #333948;
+  --rule: #444b5e;
+  --ink: #ece6d8;
+  --fog: #b0b5c3;
+  --candle: #f0a33a;
+  --candle-ink: #24180a;
+  --page: #ff7a6b;
+  --clear: #8ccd9f;
+  --font-display: 'Fraunces Variable', 'Iowan Old Style', Georgia, serif;
+  --font-body: 'IBM Plex Sans', system-ui, sans-serif;
+  --font-data: 'JetBrains Mono Variable', ui-monospace, monospace;
+  --radius: 6px;
+  --gap: clamp(16px, 2.2vw, 28px);
+  color-scheme: dark;
+  font-family: var(--font-body);
+  font-size: 17px;
+  line-height: 1.55;
+  color: var(--ink);
+  background: var(--ground);
 }
-@media (prefers-color-scheme: light) {
-  :root { --bg: #f8f6fc; --panel: #fff; --line: #d9d1ea; --text: #1d1530; --muted: #5b5170; --accent: #7c3aed; --accent-ink: #fff; --bad: #b91c1c; color-scheme: light; }
+* {
+  box-sizing: border-box;
 }
-* { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--text); }
-:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
-.top { padding: 16px 24px; border-bottom: 1px solid var(--line); }
-.top h1 { margin: 0; font-size: 1.25rem; }
-main { padding: 16px 24px 48px; max-width: 1100px; margin: 0 auto; display: grid; gap: 16px; }
-.muted { color: var(--muted); font-weight: normal; }
-.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; margin-bottom: 12px; overflow-x: auto; }
-label { display: block; margin: 12px 0 4px; font-weight: 600; }
-input, select, textarea { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px; width: 100%; }
-button { font: inherit; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--text); cursor: pointer; min-height: 36px; margin-top: 8px; }
-button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
-button.danger { border-color: var(--bad); color: var(--bad); }
-table { border-collapse: collapse; width: 100%; }
-th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); }
-.error { color: var(--bad); }
-.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+body {
+  margin: 0;
+  background: var(--ground);
+}
+:focus-visible {
+  outline: 3px solid var(--candle);
+  outline-offset: 3px;
+}
+a {
+  color: var(--candle);
+}
+.muted {
+  color: var(--fog);
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+main {
+  padding: var(--gap);
+  max-width: 1280px;
+  margin: 0 auto;
+}
+.dw {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: var(--gap);
+  align-items: start;
+}
+.top {
+  grid-column: 1 / -1;
+  padding: 8px 0 18px;
+  border-bottom: 1px solid var(--rule);
+}
+.top h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(40px, 5vw, 72px);
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+.top h1 .muted {
+  display: block;
+  margin-top: 10px;
+  font-family: var(--font-data);
+  font-size: 0.85rem;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--candle);
+}
+/* Schedule form on the left, drills on the right. */
+.dw > .card:first-of-type {
+  grid-column: 1 / span 4;
+  position: sticky;
+  top: 16px;
+}
+.dw > section {
+  grid-column: 5 / span 8;
+}
+.dw > section > h2 {
+  font-family: var(--font-data);
+  font-weight: 500;
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fog);
+  margin: 0 0 12px;
+}
+.card {
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  margin-bottom: 14px;
+  overflow-x: auto;
+}
+.card h2,
+.card h3 {
+  margin: 0 0 8px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.card h2 {
+  font-size: 1.5rem;
+}
+.card h3 {
+  font-size: 1.35rem;
+}
+.dw-form label {
+  display: block;
+  font-weight: 600;
+  margin: 14px 0 6px;
+}
+input,
+select,
+textarea {
+  font: inherit;
+  width: 100%;
+  color: var(--ink);
+  background: var(--ground);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+}
+button {
+  font: inherit;
+  font-weight: 600;
+  min-height: 44px;
+  padding: 8px 16px;
+  margin-top: 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--rule);
+  background: var(--panel-raised);
+  color: var(--ink);
+  cursor: pointer;
+}
+button:hover {
+  border-color: var(--fog);
+}
+button.primary {
+  width: 100%;
+  background: var(--candle);
+  border-color: var(--candle);
+  color: var(--candle-ink);
+}
+button.danger {
+  background: transparent;
+  border-color: var(--page);
+  color: var(--page);
+}
+.dw-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 6px;
+}
+.dw-table th,
+.dw-table td {
+  text-align: left;
+  padding: 10px 10px 10px 0;
+  border-top: 1px solid var(--rule);
+  vertical-align: middle;
+}
+.dw-table thead th {
+  font-family: var(--font-data);
+  font-weight: 500;
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fog);
+  border-top: 0;
+}
+.dw-table td {
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.92rem;
+}
+.dw-table td button {
+  margin-top: 0;
+  min-height: 36px;
+  padding: 4px 12px;
+}
+.error {
+  color: var(--page);
+}
+@media (max-width: 900px) {
+  .dw > .card:first-of-type,
+  .dw > section {
+    grid-column: 1 / -1;
+    position: static;
+  }
+}

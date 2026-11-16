@@ -1,3 +1,7 @@
+import '@fontsource-variable/fraunces/index.css';
+import '@fontsource/ibm-plex-sans/400.css';
+import '@fontsource/ibm-plex-sans/600.css';
+import '@fontsource-variable/jetbrains-mono/index.css';
 // The standalone Daemonwatch page the game server serves at /daemonwatch/ (for judges
 // and anyone without Crew). It shares every component with the Crew page.
 import { StrictMode, useMemo, useState } from 'react';

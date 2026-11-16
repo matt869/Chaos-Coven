@@ -9,11 +9,12 @@ afterEach(cleanup);
 describe('Picker', () => {
   it('starts the chosen haunting with the player name', () => {
     const onStart = vi.fn();
-    render(<Picker hauntings={[{ id: 'the-vanishing', name: 'The Vanishing', difficulty: 'easy', escalationSteps: 2 }]} onStart={onStart} />);
-    const start = screen.getByRole('button', { name: /start the night shift/i });
+    render(<Picker hauntings={[{ id: 'the-vanishing', name: 'The Vanishing', difficulty: 'easy', escalationSteps: 2, parSeconds: 300 }]} onStart={onStart} />);
+    const start = screen.getByRole('button', { name: /take the pager/i });
     expect((start as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(screen.getByLabelText(/the vanishing/i));
     fireEvent.change(screen.getByLabelText(/your name/i), { target: { value: ' sam ' } });
+    expect(screen.getByText('par 5:00')).toBeTruthy();
     fireEvent.click(start);
     expect(onStart).toHaveBeenCalledWith('the-vanishing', 'sam');
   });
@@ -46,7 +47,8 @@ describe('Postmortem', () => {
     render(<Postmortem pm={pm} onAgain={() => undefined} />);
     expect(screen.getByLabelText('Score 60 out of 100')).toBeTruthy();
     expect(screen.getByText(/never verified/i)).toBeTruthy();
-    expect(screen.getByText('(missed)')).toBeTruthy();
+    expect(screen.getByText(/missed/)).toBeTruthy();
+    expect(screen.getByText(/0\/1 cause signals checked/)).toBeTruthy();
   });
 });
 

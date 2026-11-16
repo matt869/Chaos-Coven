@@ -60,6 +60,8 @@ export interface SessionView {
   hauntingId: string;
   hauntingName: string;
   difficulty: Haunting['difficulty'];
+  /** Detection target: naming the right component within this time earns full points. */
+  parSeconds: number;
   drillId?: string;
   player?: string;
   status: Session['status'];
@@ -110,8 +112,15 @@ export class SessionManager extends EventEmitter {
     this.emit('event', e);
   }
 
-  hauntings(): { id: string; name: string; difficulty: Haunting['difficulty']; escalationSteps: number }[] {
-    return this.opts.engine.list().map((h) => ({ id: h.id, name: h.name, difficulty: h.difficulty, escalationSteps: h.escalationSteps }));
+  /** What the picker may show. Par time is a target, not a spoiler. */
+  hauntings(): { id: string; name: string; difficulty: Haunting['difficulty']; escalationSteps: number; parSeconds: number }[] {
+    return this.opts.engine.list().map((h) => ({
+      id: h.id,
+      name: h.name,
+      difficulty: h.difficulty,
+      escalationSteps: h.escalationSteps,
+      parSeconds: this.opts.engine.get(h.id).scoring.detectParSeconds,
+    }));
   }
 
   active(): SessionView | undefined {
@@ -183,6 +192,7 @@ export class SessionManager extends EventEmitter {
       hauntingId: s.haunting.id,
       hauntingName: s.haunting.name,
       difficulty: s.haunting.difficulty,
+      parSeconds: s.haunting.scoring.detectParSeconds,
       drillId: s.drillId,
       player: s.player,
       status: s.status,
