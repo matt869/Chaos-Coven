@@ -19,10 +19,22 @@ const fail = (msg) => {
 };
 
 if (!existsSync('server/dist/main.js') || !existsSync('web/dist/index.html')) fail('Build first: npm run build');
-try {
-  execFileSync(process.execPath, ['scripts/sandbox-status.mjs'], { stdio: 'pipe' });
-} catch {
-  fail('The sandbox is not healthy. Start Docker Desktop, then: npm run sandbox:up && npm run sandbox:status');
+// Wait for the sandbox instead of failing at once: right after `docker compose up`, the
+// services need about a minute of traffic before their metrics look healthy.
+const waitSeconds = Number(process.env.WH_HEALTH_WAIT_SECONDS ?? 300);
+const started = Date.now();
+for (let attempt = 1; ; attempt++) {
+  try {
+    execFileSync(process.execPath, ['scripts/sandbox-status.mjs'], { stdio: 'pipe' });
+    break;
+  } catch (err) {
+    if (Date.now() - started > waitSeconds * 1000) {
+      const failing = String(err.stdout ?? '').split('\n').filter((l) => l.startsWith('FAIL')).join('\n  ');
+      fail(`The sandbox is not healthy after ${waitSeconds}s:\n  ${failing}\nStart Docker, then: npm run sandbox:up && npm run sandbox:status`);
+    }
+    if (attempt === 1) console.error('[host] waiting for the sandbox to become healthy...');
+    await new Promise((r) => setTimeout(r, 5000));
+  }
 }
 try {
   execFileSync('cloudflared', ['--version'], { stdio: 'pipe' });
