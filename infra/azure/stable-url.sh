@@ -31,7 +31,12 @@ cat > /etc/caddy/Caddyfile <<CADDY
 $FQDN {
 	encode zstd gzip
 	reverse_proxy 127.0.0.1:4000
-	header -Server
+	# Don't announce the server software to visitors.
+	header {
+		defer
+		-Server
+		-Via
+	}
 }
 CADDY
 systemctl enable caddy
