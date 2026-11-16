@@ -24,7 +24,8 @@ Daemonwatch, a Kiro Crew App, lets a team lead schedule the same drill for a who
 - **Sandbox** (`sandbox/`). Docker Compose with resource caps on every container, an internal network with no route out, and a single nginx gateway bound to 127.0.0.1. Services push logs straight to Loki, so nothing needs the Docker socket.
 - **Game server** (`server/`). Sessions, escalation timers, a restricted terminal that only accepts allowlisted `haunt` commands, verification against live Prometheus and Loki data, deterministic scoring and the postmortem.
 - **Narrator.** Optional, using Claude on Amazon Bedrock through an IAM role. Every generated line passes a guard that enforces the ghost-voice rules (at most two sentences; no service or number that isn't in the facts it was given). Anything that fails falls back to the hand-written line, so the narrator can hint but never invent a signal.
-- **Player UI** (`web/`) and **Daemonwatch** (`crew-app/`). React and Vite. The terminal is xterm.js over a WebSocket.
+- **Player UI** (`web/`) and **Daemonwatch** (`crew-app/`). React and Vite. The terminal is xterm.js over a WebSocket. The design is a 3 a.m. night shift with a Halloween streak: the pager is the centrepiece, and a ghost with moods reacts to how the shift is going (worried when paged, panicking on escalation, cheering when the fix verifies). All decoration is hidden from screen readers and stops under reduced motion.
+- **Hosting.** One Azure VM runs the sandbox and the game 24/7 behind Caddy, at one permanent HTTPS address, behind an access code. Only ports 80 and 443 are open. Player-facing errors are scrubbed of internal details, and every response carries security headers.
 
 ## How we used Kiro
 
@@ -33,6 +34,10 @@ Daemonwatch, a Kiro Crew App, lets a team lead schedule the same drill for a who
 - **Property tests** (fast-check) turned those properties into checks. They found real bugs (see `kiro-journal.md`).
 - **Hooks** (Kiro 1.0 v1 format) validate hauntings on save, review UI changes for accessibility and keep the journal. The pre-submission check is a manual steering file run as `/submission-guard`.
 - **Agents** author new hauntings, QA them against the sandbox, direct drills and write team postmortems.
+
+## Try it
+
+<https://chaos-coven.eastasia.cloudapp.azure.com> (ask us for the access code). Or run it locally with the quick start in the [README](../README.md).
 
 ## What's next
 

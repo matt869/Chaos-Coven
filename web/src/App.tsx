@@ -19,6 +19,50 @@ const SHIFT = [
   { step: 'Debrief', text: 'Live checks verify the fix, and the postmortem scores the shift.' },
 ];
 
+const BOOS = [
+  'Boo! Did I scare you? No? Good, you are ready for on-call.',
+  'Psst. One of the clues is a red herring. I would know.',
+  'Restarting things feels good. It does not always help.',
+  'I only haunt the sandbox. Your real servers are safe from me.',
+  'Check the queue. Queues never lie. Ghosts sometimes do.',
+];
+
+/** The hero ghost. Poke it and it says boo, with a tip, in a polite live region. */
+function Mascot() {
+  const [line, setLine] = useState<number>();
+  const [shown, setShown] = useState(false);
+  const [boo, setBoo] = useState(false);
+  useEffect(() => {
+    if (!boo) return;
+    const t = setTimeout(() => setBoo(false), 900);
+    return () => clearTimeout(t);
+  }, [boo]);
+  useEffect(() => {
+    if (!shown) return;
+    const t = setTimeout(() => setShown(false), 6000);
+    return () => clearTimeout(t);
+  }, [shown, line]);
+  return (
+    <div className="mascot-wrap">
+      <button
+        type="button"
+        className={`mascot-button${boo ? ' boo' : ''}`}
+        aria-label="Poke the ghost for a tip"
+        onClick={() => {
+          setBoo(true);
+          setShown(true);
+          setLine((n) => ((n ?? -1) + 1) % BOOS.length);
+        }}
+      >
+        <Ghost className="mascot" mood={boo ? 'boo' : 'calm'} candle />
+      </button>
+      <p className={`speech${shown ? ' shown' : ''}`} aria-live="polite">
+        {shown && line !== undefined ? BOOS[line] : ''}
+      </p>
+    </div>
+  );
+}
+
 export function Picker({ hauntings, onStart, error }: { hauntings: HauntingSummary[]; onStart: (id: string, player: string) => void; error?: string }) {
   const [choice, setChoice] = useState('');
   const [player, setPlayer] = useState('');
@@ -34,7 +78,7 @@ export function Picker({ hauntings, onStart, error }: { hauntings: HauntingSumma
           <h1 id="pick-title" tabIndex={-1}>
             It&rsquo;s <span className="candlelit">3&nbsp;a.m.</span> and the pager just went off.
           </h1>
-          <Ghost className="mascot" />
+          <Mascot />
         </div>
         <p className="lede">
           A ghost has broken <strong>one thing</strong> in a six-service shop. You get the same tools as a real shift: live Grafana dashboards, the logs, and a terminal
@@ -64,6 +108,7 @@ export function Picker({ hauntings, onStart, error }: { hauntings: HauntingSumma
             <label key={h.id} className="rota-row">
               <input type="radio" name="haunting" value={h.id} checked={choice === h.id} onChange={() => setChoice(h.id)} />
               <span className="rota-name">{h.name}</span>
+              {choice === h.id && <Ghost className="peek" mood="worried" />}
               <span className={`threat threat-${h.difficulty}`}>
                 <span className="pumpkins" aria-hidden="true">
                   {[1, 2, 3].map((n) => (
@@ -124,7 +169,7 @@ export function App() {
       </a>
       <header className="top">
         <span className="wordmark">
-          <Ghost className="wordmark-ghost" />
+          <Ghost className="wordmark-ghost" mood="happy" />
           <span>
             Witching Hour<span className="moon">.</span>
           </span>
@@ -151,7 +196,8 @@ export function App() {
         )}
         <Suspense
           fallback={
-            <p className="muted" role="status">
+            <p className="summoning muted" role="status">
+              <Ghost className="loading-ghost" mood="calm" />
               Summoning your shift…
             </p>
           }

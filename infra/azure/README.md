@@ -1,6 +1,6 @@
 # Hosting Witching Hour 24/7 on Azure (Azure for Students)
 
-One small Ubuntu VM runs everything: the Docker sandbox, the game server and a Cloudflare Quick Tunnel protected by an access code. Your PC can be off.
+One small Ubuntu VM runs everything: the Docker sandbox, the game server, and Caddy in front with a free HTTPS certificate, all behind an access code. Your PC can be off. (Setup first starts a Cloudflare Quick Tunnel so you can try it straight away; the permanent address below replaces it.)
 
 - **Size:** `Standard_B2als_v2` (2 vCPU, 4 GB). Roughly $30/month of student credit, including a Standard SSD and a public IP. (`Standard_B2s` was sold out in East Asia; any 2 vCPU / 4 GB size works. List what's available with `az vm list-skus --location eastasia --resource-type virtualMachines --output table`.)
 - **Only the web ports are open** (80 and 443, to Caddy). Everything else, including SSH, stays closed; the VM is managed with `az vm run-command`.

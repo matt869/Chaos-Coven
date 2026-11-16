@@ -34,3 +34,13 @@ The docs left the proxy header layout and secret source open, so those sit in on
 - Two thresholds were wrong for this shop: one red herring claimed payments was slow when it was normal.
 
 A bot playtest (`npm run playthrough`) now plays every haunting end to end and checks the evidence appears, the fix verifies, and the sandbox recovers.
+
+**2026-11-15: Hosting with the PC off.** The game needs Docker, so static hosting was out. First a Cloudflare Quick Tunnel from a laptop, then one Azure for Students VM (`Standard_B2s` was sold out in the region, so `B2als_v2`), set up by `cloud-init.sh` and managed only with `az vm run-command`, with no SSH port open. Two bugs only showed on the VM: `tr | head` under `pipefail` killed cloud-init with SIGPIPE while generating the access code, and the service restarted in a loop because it opened the tunnel before the sandbox was healthy.
+
+**2026-11-16: One permanent address.** Quick Tunnel links change on every restart. The VM's public IP got a free Azure DNS name, and `stable-url.sh` puts Caddy in front with a Let's Encrypt certificate. The address survived a full VM reboot.
+
+**2026-11-16: Security pass for a public link.** Security headers and a CSP on every response, player-facing errors scrubbed of URLs, paths, IDs and IPs (with a property test), Server, Via and the Grafana version hidden, `/mcp` refusing anything proxied, and a lockout on the access code. Grafana Live needed `GF_LIVE_ALLOWED_ORIGINS` to work behind the proxy.
+
+**2026-11-16: The design.** A night-shift redesign around the pager, then a Halloween layer: a moon, fog, bats, pumpkin difficulty meters, cobwebs and a verdict stamp. Each change was checked with headless-browser screenshots at desktop and phone widths, which caught the moon sitting behind the headline and the terminal overflowing on phones.
+
+**2026-11-17: A ghost with moods.** The ghost now has faces (calm, worried, scared, happy, sad, boo) and blinks. It reacts to the shift: worried when paged, panicking on escalation or over par, cheering when the fix verifies, and on the postmortem it follows your rank, with candy corn for a perfect score. The first screenshot showed the "worried" brows reading as angry, because they sloped down toward the middle; they now rise. All of it is decorative and stops under reduced motion.

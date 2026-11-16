@@ -1,32 +1,116 @@
 // Hand-drawn Halloween art as inline SVG: no image requests, crisp at any size.
 // Everything here is decorative and hidden from assistive technology.
+import { useId } from 'react';
 
-export function Ghost({ className }: { className?: string }) {
+export type Mood = 'calm' | 'worried' | 'scared' | 'happy' | 'sad' | 'boo';
+
+const INK = '#232733';
+const BLUSH = '#f4a6b0';
+
+/** The ghost's face for each mood: eyes, brows, mouth and blush. */
+function Face({ mood }: { mood: Mood }) {
+  const eyes =
+    mood === 'happy' ? (
+      // ^ ^ eyes
+      <g stroke={INK} strokeWidth="4" strokeLinecap="round" fill="none">
+        <path d="M38 60q7-9 14 0" />
+        <path d="M65 60q7-9 14 0" />
+      </g>
+    ) : mood === 'scared' || mood === 'boo' ? (
+      <g className="eyes">
+        <ellipse cx="45" cy="57" rx="8" ry="11" fill={INK} />
+        <ellipse cx="72" cy="57" rx="8" ry="11" fill={INK} />
+        <circle cx="47.5" cy="53" r="2.6" fill="#fff" />
+        <circle cx="74.5" cy="53" r="2.6" fill="#fff" />
+      </g>
+    ) : (
+      <g className="eyes">
+        <ellipse cx="45" cy="58" rx="6" ry={mood === 'sad' ? 7 : 9} fill={INK} />
+        <ellipse cx="72" cy="58" rx="6" ry={mood === 'sad' ? 7 : 9} fill={INK} />
+        <circle cx="47" cy="55" r="2" fill="#fff" />
+        <circle cx="74" cy="55" r="2" fill="#fff" />
+      </g>
+    );
+
+  const brows =
+    mood === 'worried' || mood === 'sad' ? (
+      <g stroke={INK} strokeWidth="3" strokeLinecap="round">
+        {/* raised in the middle: worried, not cross */}
+        <path d="M37 47l12-5" />
+        <path d="M80 47l-12-5" />
+      </g>
+    ) : null;
+
+  const mouth = {
+    calm: <path d="M51 76q7.5 7 15 0" stroke={INK} strokeWidth="3.5" strokeLinecap="round" fill="none" />,
+    happy: <path d="M48 74q10.5 14 21 0z" fill={INK} />,
+    worried: <path d="M50 80q4-4 8 0t8 0" stroke={INK} strokeWidth="3" strokeLinecap="round" fill="none" />,
+    scared: <ellipse cx="58.5" cy="82" rx="6" ry="8" fill={INK} />,
+    sad: <path d="M51 82q7.5-7 15 0" stroke={INK} strokeWidth="3.5" strokeLinecap="round" fill="none" />,
+    boo: <ellipse cx="58.5" cy="82" rx="9" ry="11" fill={INK} />,
+  }[mood];
+
+  const blush = mood === 'calm' || mood === 'happy' || mood === 'boo' ? (
+    <g fill={BLUSH} opacity="0.6">
+      <ellipse cx="34" cy="72" rx="6" ry="3.5" />
+      <ellipse cx="83" cy="72" rx="6" ry="3.5" />
+    </g>
+  ) : null;
+
+  return (
+    <>
+      {eyes}
+      {brows}
+      {mouth}
+      {blush}
+    </>
+  );
+}
+
+/**
+ * The Witching Hour ghost. `mood` changes its face; `candle` adds the candle it holds
+ * in the hero. Ids are per-instance so several ghosts can share a page.
+ */
+export function Ghost({ className, mood = 'calm', candle = false }: { className?: string; mood?: Mood; candle?: boolean }) {
+  const flame = useId();
   return (
     <svg className={className} viewBox="0 0 120 150" aria-hidden="true" focusable="false">
-      <defs>
-        <radialGradient id="flame" cx="50%" cy="60%" r="60%">
-          <stop offset="0%" stopColor="#fff3c4" />
-          <stop offset="45%" stopColor="#f0a33a" />
-          <stop offset="100%" stopColor="#f0a33a" stopOpacity="0" />
-        </radialGradient>
-      </defs>
-      {/* candle glow */}
-      <circle cx="96" cy="44" r="26" fill="url(#flame)" opacity="0.55" className="glow" />
+      {candle && (
+        <>
+          <defs>
+            <radialGradient id={flame} cx="50%" cy="60%" r="60%">
+              <stop offset="0%" stopColor="#fff3c4" />
+              <stop offset="45%" stopColor="#f0a33a" />
+              <stop offset="100%" stopColor="#f0a33a" stopOpacity="0" />
+            </radialGradient>
+          </defs>
+          <circle cx="96" cy="44" r="26" fill={`url(#${flame})`} opacity="0.55" className="glow" />
+        </>
+      )}
       {/* body */}
       <path
         d="M60 8c-26 0-44 20-44 48v70l11-9 11 10 11-10 11 10 11-10 11 10 11-10 11 9V56C104 28 86 8 60 8z"
         fill="#ece6d8"
       />
       <path d="M60 8c-26 0-44 20-44 48v70l11-9V58C27 34 40 15 60 12z" fill="#d6cfbd" opacity="0.6" />
-      {/* face */}
-      <ellipse cx="45" cy="58" rx="6" ry="9" fill="#232733" />
-      <ellipse cx="72" cy="58" rx="6" ry="9" fill="#232733" />
-      <ellipse cx="58.5" cy="80" rx="7" ry="9" fill="#232733" />
-      {/* arm holding the candle */}
-      <path d="M96 78c8-4 10-12 6-20" stroke="#ece6d8" strokeWidth="9" strokeLinecap="round" fill="none" />
-      <rect x="91" y="50" width="10" height="18" rx="2" fill="#f4e7c8" />
-      <path d="M96 36c4 5 4 10 0 13-4-3-4-8 0-13z" fill="#f0a33a" className="flame" />
+      <Face mood={mood} />
+      {candle && (
+        <>
+          <path d="M96 78c8-4 10-12 6-20" stroke="#ece6d8" strokeWidth="9" strokeLinecap="round" fill="none" />
+          <rect x="91" y="50" width="10" height="18" rx="2" fill="#f4e7c8" />
+          <path d="M96 36c4 5 4 10 0 13-4-3-4-8 0-13z" fill="#f0a33a" className="flame" />
+        </>
+      )}
+    </svg>
+  );
+}
+
+export function CandyCorn({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 20 24" aria-hidden="true" focusable="false">
+      <path d="M10 1C6 1 1 18 2 21c1 2 15 2 16 0 1-3-4-20-8-20z" fill="#fff4dc" />
+      <path d="M3.3 14c-.8 3-1.4 6-1.3 7 1 2 15 2 16 0 .1-1-.5-4-1.3-7z" fill="#f0a33a" />
+      <path d="M2.2 19.2c-.2.9-.3 1.5-.2 1.8 1 2 15 2 16 0 .1-.3 0-.9-.2-1.8z" fill="#f6d36b" />
     </svg>
   );
 }
@@ -38,6 +122,10 @@ export function Bat({ className }: { className?: string }) {
         d="M32 9c2-4 4-5 6-5-1 2-1 4 0 5 6-6 15-8 26-4-6 2-9 6-9 11-4-3-8-3-11 1-2-3-5-4-8-3-1 3-3 5-4 7-1-2-3-4-4-7-3-1-6 0-8 3-3-4-7-4-11-1 0-5-3-9-9-11 11-4 20-2 26 4 1-1 1-3 0-5 2 0 4 1 6 5z"
         fill="#11131a"
       />
+      {/* cute eyes and tiny fangs */}
+      <circle cx="29.5" cy="11" r="1.3" fill="#f0a33a" />
+      <circle cx="34.5" cy="11" r="1.3" fill="#f0a33a" />
+      <path d="M30.5 14l.6 1.4.6-1.4M32.3 14l.6 1.4.6-1.4" stroke="#ece6d8" strokeWidth=".6" fill="none" />
     </svg>
   );
 }

@@ -4,6 +4,21 @@
 
 Most engineers do their first on-call shift without any practice. Witching Hour lets you practice on a system that is actually broken, where getting it wrong costs nothing.
 
+![The picker: pick a haunting from tonight's rota, and poke the ghost for a tip](docs/screenshots/picker.jpg)
+
+**Play it:** <https://chaos-coven.eastasia.cloudapp.azure.com>. It runs 24/7 on one small Azure VM. The page asks for an access code, which we share with judges and players directly; it is never in this repo.
+
+<table>
+<tr>
+<td width="50%"><img src="docs/screenshots/session.jpg" alt="A shift in progress: the pager with the alert, the clock, the par bar and a happy ghost once the fix is verified; the haunt terminal; the narrator; and the diagnosis form"></td>
+<td width="50%"><img src="docs/screenshots/postmortem.jpg" alt="The postmortem: a score of 100, an Exorcised stamp, the Ghostbuster rank and falling candy corn, with the score breakdown and the evidence list"></td>
+</tr>
+<tr>
+<td>The pager, the terminal and your call. The ghost in the corner worries, panics when the haunting escalates, and cheers when your fix verifies.</td>
+<td>The postmortem: score, rank, what you found and missed, and what to check first next shift. A Ghostbuster shift earns candy corn.</td>
+</tr>
+</table>
+
 ## How a haunting plays out
 
 1. **Haunt.** A ghost injects a fault into the sandboxed shop.
@@ -51,15 +66,15 @@ To work on the UIs with hot reload, run `npm run dev:web` (port 5173) or `npm ru
 
 When you're done: `npm run sandbox:down`.
 
-### Hosting it (Cloudflare)
+### Hosting it
 
-The game needs Docker, so it can't run on Cloudflare Pages or Workers. Run the stack on one machine and put a Cloudflare Tunnel in front of it:
+The game drives a Docker sandbox, so it can't run on static hosting like Cloudflare Pages or Workers. It runs on one machine with Docker, behind an access code:
 
-- **No domain:** `npm run host:quick` opens a free `*.trycloudflare.com` link protected by a random access code, and prints both.
-- **Your own domain:** a named tunnel with Cloudflare Access, using `npm run start:hosted`.
-- **24/7 with your PC off, one permanent address:** one small Azure VM (works with Azure for Students) behind Caddy with a free HTTPS certificate: [infra/azure/README.md](infra/azure/README.md).
-
-Both are in [infra/cloudflare/README.md](infra/cloudflare/README.md).
+| Option | Address | Guide |
+|---|---|---|
+| **24/7 with your PC off** (what the live demo uses) | One permanent HTTPS address: a small Azure VM (works with Azure for Students), Caddy with a free Let's Encrypt certificate, only ports 80 and 443 open | [infra/azure/README.md](infra/azure/README.md) |
+| Quick share from your PC | `npm run host:quick` opens a temporary `*.trycloudflare.com` link and prints a random access code | [infra/cloudflare/README.md](infra/cloudflare/README.md) |
+| Your own domain | A named Cloudflare Tunnel with Cloudflare Access, using `npm run start:hosted` | [infra/cloudflare/README.md](infra/cloudflare/README.md) |
 
 ### Settings
 
@@ -71,6 +86,7 @@ Copy [`.env.example`](.env.example) and adjust. The useful ones:
 | `WH_NARRATOR` | `static` (default) uses the hand-written lines. `bedrock` rewrites them with Claude on Amazon Bedrock. |
 | `AWS_REGION`, `WH_BEDROCK_MODEL_ID` | Bedrock region and model (default `anthropic.claude-opus-5-5`). Credentials come from the AWS credential chain, such as an IAM role. Never put keys in code or `.env`. |
 | `WH_SESSION_MAX_MINUTES` | Sessions end and revert on their own after this long (default 45). |
+| `WH_ACCESS_CODE` | Every page asks for this code (at least 8 characters). Set it in the environment or a root-only file, never in the repo. |
 
 ## The player terminal
 
@@ -125,6 +141,23 @@ From [`sandbox-safety.md`](.kiro/steering/sandbox-safety.md), enforced in code:
 - **The terminal only runs allowlisted commands**, parsed into typed commands. Nothing reaches a shell.
 - **Narration can't invent signals.** Generated lines must pass a guard (at most 2 sentences, and no service or number outside the given facts), or the hand-written line is used.
 
+## Security and privacy on the public site
+
+- **Access code.** Every page, the API, the terminal WebSocket, Grafana and Daemonwatch sit behind the code. The cookie is HMAC-signed, `HttpOnly` and `Secure`, and repeated wrong guesses are locked out (10 per 10 minutes).
+- **Nothing internal leaks.** Player-facing errors are scrubbed of URLs, file paths, container IDs and IP addresses; the details only go to the server log. Caddy drops its `Server` and `Via` headers, and Grafana hides its version.
+- **Security headers.** A strict Content-Security-Policy, `nosniff`, `X-Frame-Options`, `Referrer-Policy: no-referrer` and a Permissions-Policy on every response.
+- **The MCP endpoint is loopback only.** `/mcp` refuses anything that came through a proxy or from another machine, and agents can't apply a haunting while a player is on call.
+- **No secrets in the repo.** Credentials come from the environment (the access code from a root-only file on the VM, Bedrock from the AWS credential chain). `.gitignore` covers `.env`, generated links and codes, and local data.
+
+## The design
+
+Night shift at 3 a.m., with a Halloween streak: a dark ink-and-candlelight palette, Fraunces for headlines, IBM Plex Sans for text and JetBrains Mono for data, all self-hosted.
+
+- **The pager** is the centrepiece: an LCD alert, a pulsing LED, the shift clock, escalation pips and a par bar. It buzzes when you're paged and on every escalation.
+- **The ghost** has moods. Poke the one on the front page and it says boo with a tip. A small ghost peeks over the haunting you pick. On the pager it looks worried, panics when things escalate or you go over par, and cheers when your fix verifies. On the postmortem its face follows your rank.
+- **Little touches:** jack-o'-lantern difficulty meters, cobwebs on the pager, a moon, drifting fog, bats with tiny fangs, an "Exorcised" stamp, and candy corn for a perfect shift.
+- **Accessible:** every decoration is hidden from screen readers, the ghost's tips use a polite live region, focus moves to each new screen, and all motion stops under `prefers-reduced-motion`. Works down to phone width.
+
 ## Testing
 
 ```bash
@@ -146,12 +179,18 @@ Engine property tests run against an in-memory fake sandbox that implements the 
 
 ## Status
 
-Built and tested: the engine, three hauntings, the sandbox definition, the game server, the player UI and Daemonwatch. Not yet done:
+Done:
 
-- The sandbox has been validated (`docker compose config`) but not yet run end to end, and the real-sandbox integration test is still to run. CI builds the image.
-- No playtests yet ([plan](docs/playtests.md)).
+- The engine, three hauntings, the sandbox, the game server, the player UI and Daemonwatch, with 263 tests.
+- All three hauntings pass the bot playtest against the real sandbox: the evidence appears, the documented fix verifies, and the sandbox recovers.
+- Hosted 24/7 on Azure at one permanent HTTPS address, and it comes back on its own after a reboot.
+
+Not yet done:
+
+- No human playtests yet ([plan](docs/playtests.md)).
 - Daemonwatch hasn't been installed into a real Crew yet, and `kirocrew doctor` hasn't been run on it. A few Crew details the docs leave open are listed in [crew-app/README.md](crew-app/README.md).
-- `infra/` (AWS deployment and IAM roles) is not built.
+- The Bedrock narrator is built and guarded, but the live demo uses the hand-written lines until the AWS account has Claude model access.
+- No AWS deployment (`infra/` has Azure and Cloudflare only).
 
 ## Out of scope
 

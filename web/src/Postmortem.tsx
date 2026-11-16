@@ -1,5 +1,23 @@
 import { formatDuration, type Postmortem as PM } from './api';
-import { Ghost } from './art';
+import { CandyCorn, Ghost, type Mood } from './art';
+
+function moodFor(total: number, verified: boolean): Mood {
+  if (total >= 85) return 'happy';
+  if (verified || total >= 60) return 'calm';
+  if (total >= 30) return 'worried';
+  return 'sad';
+}
+
+/** A one-time shower of candy corn for a Ghostbuster shift. Purely decorative. */
+function CandyShower() {
+  return (
+    <div className="candy-shower" aria-hidden="true">
+      {Array.from({ length: 14 }, (_, i) => (
+        <CandyCorn key={i} className={`candy candy-${i % 7}`} />
+      ))}
+    </div>
+  );
+}
 
 /** A rank for the shift, from the fixed score. */
 export function rankFor(total: number): string {
@@ -35,9 +53,10 @@ export function Postmortem({ pm, onAgain }: { pm: PM; onAgain: () => void }) {
           <p className={`stamp ${s.fix.verified ? 'stamp-ok' : 'stamp-bad'}`}>{s.fix.verified ? 'Exorcised' : 'Still haunted'}</p>
         </div>
         <p className="rank">
-          <Ghost className="rank-ghost" />
+          <Ghost className="rank-ghost" mood={moodFor(s.total, s.fix.verified)} />
           {rankFor(s.total)}
         </p>
+        {s.total >= 85 && <CandyShower />}
         <p className="closing">{pm.closing}</p>
         <p className="muted data">
           {pm.endedBecause === 'timeout' ? 'time ran out' : 'shift ended'} after {formatDuration(duration)}
