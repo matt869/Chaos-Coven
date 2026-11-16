@@ -47,12 +47,17 @@ chown -R "$APP_USER:$APP_USER" "$APP_DIR"
 sudo -u "$APP_USER" -H bash -c "cd '$APP_DIR' && npm ci --no-audit --no-fund && npm run build"
 
 # A fixed access code, kept across restarts. Readable by root and the app user only.
+# Tracing off while handling the code, so it never lands in the setup log.
+set +x
 if [ ! -f /etc/witching-hour.env ]; then
-  CODE="$(tr -dc 'abcdefghjkmnpqrstuvwxyz23456789' </dev/urandom | head -c 12 | sed -E 's/(....)(....)(....)/\1-\2-\3/')"
+  # Not `tr </dev/urandom | head`: under pipefail, head closing the pipe kills tr with
+  # SIGPIPE and the whole script stops (that bug stopped the first setup).
+  CODE="$(node -e "const a='abcdefghjkmnpqrstuvwxyz23456789';const b=require('crypto').randomBytes(12);let s='';for(const x of b)s+=a[x%a.length];console.log(s.replace(/(....)(....)(....)/,'\$1-\$2-\$3'))")"
   printf 'WH_ACCESS_CODE=%s\n' "$CODE" > /etc/witching-hour.env
 fi
 chown root:"$APP_USER" /etc/witching-hour.env
 chmod 640 /etc/witching-hour.env
+set -x
 
 cat > /etc/systemd/system/witching-hour.service <<UNIT
 [Unit]
