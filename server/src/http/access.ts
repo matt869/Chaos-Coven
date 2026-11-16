@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import { setSecurityHeaders } from './security.js';
 
 /**
  * Optional access code for hosting without Cloudflare Access (for example a Cloudflare
@@ -85,7 +86,8 @@ export function createAccessGate(code: string, clock: () => number = Date.now): 
   const isHttps = (req: IncomingMessage) => req.headers['x-forwarded-proto'] === 'https' || String(req.headers['cf-visitor'] ?? '').includes('https');
 
   const html = (res: ServerResponse, status: number, body: string) => {
-    res.writeHead(status, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
+    setSecurityHeaders(res, 'html');
+    res.writeHead(status, { 'content-type': 'text/html; charset=utf-8' });
     res.end(body);
   };
 

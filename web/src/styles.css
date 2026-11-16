@@ -15,6 +15,7 @@
   --lcd: #1d1a14; /* pager screen */
   --page: #ff7a6b; /* alert state only */
   --clear: #8ccd9f; /* verified state only */
+  --witch: #8d6bd9; /* night-sky glow only, never on text */
 
   --font-display: 'Fraunces Variable', 'Iowan Old Style', Georgia, serif;
   --font-body: 'IBM Plex Sans', system-ui, sans-serif;
@@ -34,10 +35,13 @@
 * {
   box-sizing: border-box;
 }
+html {
+  background: var(--ground);
+}
 body {
   margin: 0;
   min-height: 100vh;
-  background: var(--ground);
+  background: transparent;
 }
 a {
   color: var(--candle);
@@ -938,33 +942,7 @@ code {
   .workbench,
   .sidebar,
   .report-score,
-  .next-shift {
-  margin: 26px 0 22px;
-  padding: 16px 18px;
-  border: 1px solid var(--rule);
-  border-left: 4px solid var(--candle);
-  border-radius: var(--radius);
-  background: var(--panel);
-}
-.next-shift h3 {
-  font-family: var(--font-data);
-  font-weight: 500;
-  font-size: 0.85rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--candle);
-  margin-bottom: 8px;
-}
-.next-shift ul {
-  margin: 0;
-  padding-left: 18px;
-  display: grid;
-  gap: 6px;
-}
-.next-shift p {
-  margin: 0;
-}
-.report-body {
+  .report-body {
     grid-column: 1 / -1;
   }
   .sidebar,
@@ -1066,5 +1044,347 @@ code {
   }
   * {
     scroll-behavior: auto !important;
+  }
+}
+
+/* =================== Halloween: the night outside =================== */
+.night {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 62% -4%, rgba(240, 163, 58, 0.16), transparent 24%),
+    radial-gradient(ellipse at 15% 110%, rgba(141, 107, 217, 0.16), transparent 55%),
+    linear-gradient(180deg, #1c1f2b 0%, var(--ground) 45%);
+}
+.stars {
+  position: absolute;
+  inset: 0 0 40% 0;
+  background-image:
+    radial-gradient(1px 1px at 12% 18%, #ece6d8 60%, transparent 61%),
+    radial-gradient(1px 1px at 28% 8%, #ece6d8aa 60%, transparent 61%),
+    radial-gradient(1.5px 1.5px at 44% 22%, #ece6d8cc 60%, transparent 61%),
+    radial-gradient(1px 1px at 61% 12%, #ece6d888 60%, transparent 61%),
+    radial-gradient(1px 1px at 70% 30%, #ece6d8aa 60%, transparent 61%),
+    radial-gradient(1.5px 1.5px at 93% 34%, #ece6d8bb 60%, transparent 61%),
+    radial-gradient(1px 1px at 6% 42%, #ece6d877 60%, transparent 61%),
+    radial-gradient(1px 1px at 36% 46%, #ece6d866 60%, transparent 61%),
+    radial-gradient(1px 1px at 54% 38%, #ece6d888 60%, transparent 61%);
+  opacity: 0.8;
+  animation: twinkle 7s ease-in-out infinite alternate;
+}
+/* The moon rises over the header's empty middle, never behind body text. */
+.moon-art {
+  position: absolute;
+  top: clamp(-96px, -6vw, -64px);
+  right: 34vw;
+  width: clamp(120px, 11vw, 168px);
+  opacity: 0.85;
+  filter: drop-shadow(0 0 36px rgba(243, 214, 160, 0.35));
+}
+.bat {
+  position: absolute;
+  width: 46px;
+  opacity: 0;
+  animation: fly 26s linear infinite;
+}
+.bat-1 {
+  top: 14vh;
+  animation-delay: 2s;
+}
+.bat-2 {
+  top: 22vh;
+  width: 30px;
+  animation-delay: 11s;
+  animation-duration: 31s;
+}
+.bat-3 {
+  top: 9vh;
+  width: 36px;
+  animation-delay: 19s;
+  animation-duration: 23s;
+}
+.fog {
+  position: absolute;
+  left: -20%;
+  width: 140%;
+  height: 32vh;
+  bottom: -8vh;
+  background:
+    radial-gradient(ellipse at 20% 60%, rgba(236, 230, 216, 0.055), transparent 60%),
+    radial-gradient(ellipse at 60% 50%, rgba(176, 181, 195, 0.05), transparent 55%),
+    radial-gradient(ellipse at 90% 70%, rgba(236, 230, 216, 0.045), transparent 60%);
+  filter: blur(8px);
+  animation: drift 40s ease-in-out infinite alternate;
+}
+.fog-2 {
+  bottom: -14vh;
+  opacity: 0.8;
+  animation-duration: 55s;
+  animation-direction: alternate-reverse;
+}
+@keyframes twinkle {
+  from {
+    opacity: 0.55;
+  }
+  to {
+    opacity: 0.9;
+  }
+}
+@keyframes fly {
+  0% {
+    transform: translateX(-10vw) translateY(0) scaleY(1);
+    opacity: 0;
+  }
+  5% {
+    opacity: 0.85;
+  }
+  25% {
+    transform: translateX(30vw) translateY(-12px) scaleY(0.6);
+  }
+  50% {
+    transform: translateX(70vw) translateY(8px) scaleY(1);
+  }
+  55% {
+    opacity: 0.85;
+  }
+  60%,
+  100% {
+    transform: translateX(110vw) translateY(-6px) scaleY(0.7);
+    opacity: 0;
+  }
+}
+@keyframes drift {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(8%);
+  }
+}
+
+/* wordmark ghost */
+.wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.wordmark-ghost {
+  width: 24px;
+  height: 30px;
+}
+
+/* hero: candlelit "3 a.m." and the floating ghost */
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 12px;
+}
+.candlelit {
+  color: var(--candle);
+  text-shadow: 0 0 22px rgba(240, 163, 58, 0.45);
+  animation: flicker 4.5s ease-in-out infinite;
+}
+.mascot {
+  width: clamp(84px, 10vw, 140px);
+  margin-bottom: 8px;
+  animation: bob 5s ease-in-out infinite;
+  filter: drop-shadow(0 12px 18px rgba(0, 0, 0, 0.45));
+}
+.mascot .glow {
+  animation: glow 3s ease-in-out infinite;
+}
+@keyframes flicker {
+  0%,
+  100% {
+    text-shadow: 0 0 22px rgba(240, 163, 58, 0.45);
+  }
+  45% {
+    text-shadow: 0 0 14px rgba(240, 163, 58, 0.3);
+  }
+  50% {
+    text-shadow: 0 0 28px rgba(240, 163, 58, 0.6);
+  }
+  58% {
+    text-shadow: 0 0 18px rgba(240, 163, 58, 0.35);
+  }
+}
+@keyframes bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-2deg);
+  }
+  50% {
+    transform: translateY(-12px) rotate(2deg);
+  }
+}
+@keyframes glow {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* difficulty: pumpkins */
+.threat {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.pumpkins {
+  display: inline-flex;
+  gap: 2px;
+}
+.pumpkin.lit {
+  filter: drop-shadow(0 0 4px rgba(240, 163, 58, 0.55));
+}
+.rota-row {
+  transition: background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+.rota-row:hover {
+  transform: translateX(2px);
+}
+.rota,
+.panel,
+.pager {
+  backdrop-filter: blur(2px);
+}
+
+/* pager: cobwebs and scanlines */
+.pager {
+  position: relative;
+  overflow: hidden;
+}
+.web {
+  position: absolute;
+  width: 90px;
+  height: 90px;
+  color: rgba(236, 230, 216, 0.12);
+  pointer-events: none;
+}
+.web-left {
+  top: -2px;
+  left: -2px;
+}
+.web-right {
+  top: -2px;
+  right: -2px;
+  transform: scaleX(-1);
+}
+.pager-screen {
+  position: relative;
+  background-image: repeating-linear-gradient(0deg, rgba(240, 163, 58, 0.035) 0 1px, transparent 1px 3px);
+}
+.pager-led {
+  animation: led 1.6s ease-in-out infinite;
+}
+.pager-led.resolved {
+  animation: none;
+}
+@keyframes led {
+  50% {
+    box-shadow: 0 0 0 4px rgba(255, 122, 107, 0.1), 0 0 8px rgba(255, 122, 107, 0.3);
+  }
+}
+
+/* postmortem: verdict stamp and rank */
+.score-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 18px 26px;
+}
+.stamp {
+  margin: 0;
+  padding: 8px 14px;
+  font-family: var(--font-data);
+  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  border: 3px double currentColor;
+  border-radius: 6px;
+  transform: rotate(-8deg);
+  opacity: 0.9;
+}
+.stamp-ok {
+  color: var(--clear);
+}
+.stamp-bad {
+  color: var(--page);
+}
+.rank {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin: 18px 0 0;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+.rank-ghost {
+  width: 28px;
+  height: 36px;
+}
+
+/* the narrator's latest line burns like a candle */
+.narration li:last-child {
+  animation: candle-edge 3.5s ease-in-out infinite;
+}
+@keyframes candle-edge {
+  50% {
+    border-left-color: #f6b55c;
+  }
+}
+
+/* buttons: a little warmth on hover */
+button.primary:hover:not(:disabled) {
+  box-shadow: 0 0 22px rgba(240, 163, 58, 0.35);
+}
+
+@media (max-width: 900px) {
+  /* Between the wordmark and the nav link, clear of both. */
+  .moon-art {
+    right: 25%;
+    width: 64px;
+    top: -36px;
+    opacity: 0.7;
+  }
+  .hero {
+    grid-template-columns: minmax(0, 1fr) 72px;
+  }
+}
+@media (max-width: 520px) {
+  .web {
+    width: 60px;
+    height: 60px;
+  }
+  .bat-2,
+  .bat-3 {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stars,
+  .bat,
+  .fog,
+  .candlelit,
+  .mascot,
+  .mascot .glow,
+  .pager-led,
+  .narration li:last-child {
+    animation: none !important;
+  }
+  .bat {
+    display: none;
+  }
+  .rota-row:hover {
+    transform: none;
   }
 }

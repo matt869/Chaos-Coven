@@ -1,10 +1,11 @@
 import { createReadStream } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import { createServer, request as httpRequest, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
-import { extname, join, normalize, resolve } from 'node:path';
+import { extname, join, normalize, resolve, sep } from 'node:path';
 import { WebSocketServer, type WebSocket } from 'ws';
 import { validateDrill, type DrillStore } from '../drills/drills.js';
 import type { AccessGate } from './access.js';
+import { setSecurityHeaders } from './security.js';
 import { SessionError, type SessionManager } from '../session/session.js';
 
 export interface AppOptions {
@@ -39,6 +40,8 @@ type Json = Record<string, unknown> | unknown[] | null;
 type Handler = (params: Record<string, string>, body: unknown) => Promise<{ status?: number; body: Json }>;
 
 const MIME: Record<string, string> = {
+  '.woff2': 'font/woff2',
+  '.woff': 'font/woff',
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript',
   '.css': 'text/css',
@@ -163,7 +166,10 @@ export function createApp(opts: AppOptions): Server {
       info = await stat(file).catch(() => undefined);
       if (info === undefined) return false;
     }
-    res.writeHead(200, { 'content-type': MIME[extname(file)] ?? 'application/octet-stream' });
+    const ext = extname(file);
+    const isAsset = ext !== '.html' && file.includes(`${sep}assets${sep}`);
+    setSecurityHeaders(res, ext === '.html' ? 'html' : isAsset ? 'asset' : 'api');
+    res.writeHead(200, { 'content-type': MIME[ext] ?? 'application/octet-stream' });
     createReadStream(file).pipe(res);
     return true;
   };
@@ -173,6 +179,7 @@ export function createApp(opts: AppOptions): Server {
       const url = new URL(req.url ?? '/', 'http://localhost');
       const method = req.method ?? 'GET';
       const send = (status: number, body: Json) => {
+        setSecurityHeaders(res, 'api');
         res.writeHead(status, { 'content-type': 'application/json' });
         res.end(JSON.stringify(body));
       };

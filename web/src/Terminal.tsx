@@ -32,7 +32,8 @@ export function Terminal({
       convertEol: true,
       cursorBlink: true,
       fontFamily: "'JetBrains Mono Variable', ui-monospace, 'Cascadia Mono', monospace",
-      fontSize: 14,
+      // Narrow screens fit more of the status table at a smaller size.
+      fontSize: host.current && host.current.clientWidth < 420 ? 12 : 14,
       lineHeight: 1.25,
       screenReaderMode: true,
       theme: {

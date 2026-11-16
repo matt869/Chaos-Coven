@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useState, type FormEvent } from 'react';
 import { api, formatDuration, type HauntingSummary, type Postmortem as PM, type SessionView } from './api';
+import { Ghost, NightSky, Pumpkin } from './art';
 
 // Loaded on demand: the session screen pulls in xterm.js, the postmortem is only needed at the end.
 const Session = lazy(() => import('./Session').then((m) => ({ default: m.Session })));
@@ -8,6 +9,7 @@ const Postmortem = lazy(() => import('./Postmortem').then((m) => ({ default: m.P
 type Screen = { kind: 'pick' } | { kind: 'play'; session: SessionView } | { kind: 'postmortem'; pm: PM };
 
 const SHOP = ['storefront', 'cart', 'payments', 'worker', 'postgres', 'queue'];
+const THREAT = { easy: 1, medium: 2, hard: 3 } as const;
 
 /** A real sequence, so numbering it is honest. */
 const SHIFT = [
@@ -28,9 +30,12 @@ export function Picker({ hauntings, onStart, error }: { hauntings: HauntingSumma
     <section className="picker" aria-labelledby="pick-title">
       <div className="picker-intro">
         <p className="kicker">Witching Hour · on-call training</p>
-        <h1 id="pick-title" tabIndex={-1}>
-          It&rsquo;s 3&nbsp;a.m. and the pager just went off.
-        </h1>
+        <div className="hero">
+          <h1 id="pick-title" tabIndex={-1}>
+            It&rsquo;s <span className="candlelit">3&nbsp;a.m.</span> and the pager just went off.
+          </h1>
+          <Ghost className="mascot" />
+        </div>
         <p className="lede">
           A ghost has broken <strong>one thing</strong> in a six-service shop. You get the same tools as a real shift: live Grafana dashboards, the logs, and a terminal
           that only takes <code>haunt</code> commands. Name the root cause, fix it, and read your postmortem.
@@ -59,7 +64,14 @@ export function Picker({ hauntings, onStart, error }: { hauntings: HauntingSumma
             <label key={h.id} className="rota-row">
               <input type="radio" name="haunting" value={h.id} checked={choice === h.id} onChange={() => setChoice(h.id)} />
               <span className="rota-name">{h.name}</span>
-              <span className={`threat threat-${h.difficulty}`}>{h.difficulty}</span>
+              <span className={`threat threat-${h.difficulty}`}>
+                <span className="pumpkins" aria-hidden="true">
+                  {[1, 2, 3].map((n) => (
+                    <Pumpkin key={n} lit={n <= THREAT[h.difficulty]} size={20} />
+                  ))}
+                </span>
+                {h.difficulty}
+              </span>
               <span className="rota-meta">
                 <span>par {formatDuration(h.parSeconds)}</span>
                 <span>
@@ -106,12 +118,16 @@ export function App() {
 
   return (
     <>
+      <NightSky />
       <a className="skip" href="#main">
         Skip to content
       </a>
       <header className="top">
         <span className="wordmark">
-          Witching Hour<span className="moon">.</span>
+          <Ghost className="wordmark-ghost" />
+          <span>
+            Witching Hour<span className="moon">.</span>
+          </span>
         </span>
         <nav aria-label="Other pages">
           <a href="/daemonwatch/">
@@ -136,7 +152,7 @@ export function App() {
         <Suspense
           fallback={
             <p className="muted" role="status">
-              Opening the shift…
+              Summoning your shift…
             </p>
           }
         >

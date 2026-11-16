@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { api, formatDuration, formatObserved, type Postmortem, type SessionView } from './api';
+import { Cobweb } from './art';
 import { Terminal, type RunCommand } from './Terminal';
 
 const COMPONENTS = ['storefront', 'cart', 'payments', 'worker', 'postgres', 'queue'];
@@ -22,6 +23,8 @@ function Pager({ view, elapsed }: { view: SessionView; elapsed: number }) {
 
   return (
     <section className={`pager${buzz ? ' buzz' : ''}`} onAnimationEnd={() => setBuzz(false)} aria-labelledby="pager-title">
+      <Cobweb className="web web-left" />
+      <Cobweb className="web web-right" />
       <span className={`pager-led${resolved ? ' resolved' : ''}`} aria-hidden="true" />
       <div className="pager-screen" role="alert">
         <div className="line1">{resolved ? 'resolved · fix verified' : `page · ${view.difficulty}`}</div>

@@ -1,4 +1,13 @@
 import { formatDuration, type Postmortem as PM } from './api';
+import { Ghost } from './art';
+
+/** A rank for the shift, from the fixed score. */
+export function rankFor(total: number): string {
+  if (total >= 85) return 'Ghostbuster';
+  if (total >= 60) return 'Night-shift survivor';
+  if (total >= 30) return 'Spooked';
+  return 'Possessed';
+}
 
 const KIND_LABEL = { symptom: 'symptom', cause: 'cause', 'red-herring': 'red herring' } as const;
 
@@ -18,9 +27,16 @@ export function Postmortem({ pm, onAgain }: { pm: PM; onAgain: () => void }) {
         <h2 id="pm-title" tabIndex={-1}>
           {pm.hauntingName}
         </h2>
-        <p className="score" aria-label={`Score ${s.total} out of ${s.max}`}>
-          <span className="score-value">{s.total}</span>
-          <span className="score-max">/ {s.max}</span>
+        <div className="score-row">
+          <p className="score" aria-label={`Score ${s.total} out of ${s.max}`}>
+            <span className="score-value">{s.total}</span>
+            <span className="score-max">/ {s.max}</span>
+          </p>
+          <p className={`stamp ${s.fix.verified ? 'stamp-ok' : 'stamp-bad'}`}>{s.fix.verified ? 'Exorcised' : 'Still haunted'}</p>
+        </div>
+        <p className="rank">
+          <Ghost className="rank-ghost" />
+          {rankFor(s.total)}
         </p>
         <p className="closing">{pm.closing}</p>
         <p className="muted data">

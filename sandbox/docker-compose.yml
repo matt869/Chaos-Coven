@@ -154,6 +154,9 @@ services:
       GF_AUTH_ANONYMOUS_ENABLED: "true"
       GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
       GF_AUTH_DISABLE_LOGIN_FORM: "true"
+      # Visitors see dashboards, not the Grafana version or news.
+      GF_AUTH_ANONYMOUS_HIDE_VERSION: "true"
+      GF_NEWS_NEWS_FEED_ENABLED: "false"
       GF_SECURITY_ALLOW_EMBEDDING: "true"
       # Served under /grafana so the game server can proxy it on its own origin.
       GF_SERVER_ROOT_URL: "%(protocol)s://%(domain)s:%(http_port)s/grafana/"

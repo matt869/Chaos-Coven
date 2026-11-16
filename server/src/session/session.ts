@@ -4,6 +4,7 @@ import { scoreRun, type Engine, type Haunting, type PlayerAction, type VerifyRes
 import type { Narrator } from '../narrator/bedrock.js';
 import { execute, type ExecDeps } from '../terminal/executor.js';
 import { parseCommand } from '../terminal/parser.js';
+import { publicError } from '../http/security.js';
 import { buildPostmortem, type Postmortem, type TimelineEvent } from './postmortem.js';
 
 export class SessionError extends Error {
@@ -173,8 +174,9 @@ export class SessionManager extends EventEmitter {
       return this.view(id);
     } catch (err) {
       this.activeId = undefined;
-      // The engine already rolled the fault back. Tell the player why it didn't start.
-      throw new SessionError(503, `could not start the haunting: ${(err as Error).message.split('\n')[0]}. Is the sandbox running? (npm run sandbox:up)`);
+      // The engine already rolled the fault back. The details stay in the server log.
+      this.opts.log?.(`could not start ${hauntingId}: ${(err as Error).message}`);
+      throw new SessionError(503, 'The sandbox is not ready right now, so the haunting did not start. Try again in a minute.');
     }
   }
 
@@ -220,7 +222,8 @@ export class SessionManager extends EventEmitter {
     try {
       return { ok: true, output: await execute(parsed.command, this.opts.exec) };
     } catch (err) {
-      return { ok: false, output: `error: ${(err as Error).message}` };
+      this.opts.log?.(`command "${parsed.canonical}" failed: ${(err as Error).message}`);
+      return { ok: false, output: `error: ${publicError((err as Error).message)}` };
     }
   }
 

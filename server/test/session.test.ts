@@ -93,7 +93,7 @@ describe('SessionManager with the-vanishing', () => {
     const { sessions, sandbox } = await setup();
     const baseline = sandbox.snapshot();
     sandbox.failNext('docker.setState');
-    await expect(sessions.start('the-vanishing')).rejects.toMatchObject({ status: 503, message: expect.stringMatching(/sandbox running/) });
+    await expect(sessions.start('the-vanishing')).rejects.toMatchObject({ status: 503, message: expect.stringMatching(/sandbox is not ready/) });
     expect(sessions.active()).toBeUndefined();
     sandbox.settle();
     expect(sandbox.snapshot()).toBe(baseline);
