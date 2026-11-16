@@ -6,7 +6,7 @@ Most engineers do their first on-call shift without any practice. Witching Hour 
 
 ![The picker: pick a haunting from tonight's rota, and poke the ghost for a tip](docs/screenshots/picker.jpg)
 
-**Play it:** <https://chaos-coven.eastasia.cloudapp.azure.com>. It runs 24/7 on one small Azure VM. The page asks for an access code, which we share with judges and players directly; it is never in this repo.
+**Play it:** <https://chaos-coven.eastasia.cloudapp.azure.com>. No sign-up and no password. It runs 24/7 on one small Azure VM. There is one sandbox, so one player at a time: if someone else is on call, the page tells you when it frees up (a shift takes about 5 to 10 minutes).
 
 <table>
 <tr>
@@ -68,7 +68,7 @@ When you're done: `npm run sandbox:down`.
 
 ### Hosting it
 
-The game drives a Docker sandbox, so it can't run on static hosting like Cloudflare Pages or Workers. It runs on one machine with Docker, behind an access code:
+The game drives a Docker sandbox, so it can't run on static hosting like Cloudflare Pages or Workers. It runs on one machine with Docker:
 
 | Option | Address | Guide |
 |---|---|---|
@@ -86,7 +86,8 @@ Copy [`.env.example`](.env.example) and adjust. The useful ones:
 | `WH_NARRATOR` | `static` (default) uses the hand-written lines. `bedrock` rewrites them with Claude on Amazon Bedrock. |
 | `AWS_REGION`, `WH_BEDROCK_MODEL_ID` | Bedrock region and model (default `anthropic.claude-opus-5-5`). Credentials come from the AWS credential chain, such as an IAM role. Never put keys in code or `.env`. |
 | `WH_SESSION_MAX_MINUTES` | Sessions end and revert on their own after this long (default 45). |
-| `WH_ACCESS_CODE` | Every page asks for this code (at least 8 characters). Set it in the environment or a root-only file, never in the repo. |
+| `WH_SESSION_IDLE_MINUTES` | Ends a shift when its page stops checking in for this long, such as a closed tab (default off; 5 when hosted). |
+| `WH_ACCESS_CODE` | Optional. When set, every page asks for this code (at least 8 characters). Set it in the environment or a root-only file, never in the repo. The live demo doesn't use one. |
 
 ## The player terminal
 
@@ -143,11 +144,13 @@ From [`sandbox-safety.md`](.kiro/steering/sandbox-safety.md), enforced in code:
 
 ## Security and privacy on the public site
 
-- **Access code.** Every page, the API, the terminal WebSocket, Grafana and Daemonwatch sit behind the code. The cookie is HMAC-signed, `HttpOnly` and `Secure`, and repeated wrong guesses are locked out (10 per 10 minutes).
+- **Your shift is yours.** Anyone can play without a password, but starting a shift gives your browser a random 256-bit secret in an `HttpOnly`, `Secure`, `SameSite=Strict` cookie. Only that browser can see the shift, run commands, open its terminal or end it. Everyone else is told someone is on call and when it frees up.
+- **Nobody can hog the sandbox.** A shift ends and reverts on its own when its page has been closed for 5 minutes, and after 20 minutes at most.
+- **Optional access code.** Set `WH_ACCESS_CODE` to put every page, Grafana and Daemonwatch behind a code (HMAC-signed cookie, 10 wrong guesses per 10 minutes). `npm run host:quick` always uses one.
 - **Nothing internal leaks.** Player-facing errors are scrubbed of URLs, file paths, container IDs and IP addresses; the details only go to the server log. Caddy drops its `Server` and `Via` headers, and Grafana hides its version.
 - **Security headers.** A strict Content-Security-Policy, `nosniff`, `X-Frame-Options`, `Referrer-Policy: no-referrer` and a Permissions-Policy on every response.
 - **The MCP endpoint is loopback only.** `/mcp` refuses anything that came through a proxy or from another machine, and agents can't apply a haunting while a player is on call.
-- **No secrets in the repo.** Credentials come from the environment (the access code from a root-only file on the VM, Bedrock from the AWS credential chain). `.gitignore` covers `.env`, generated links and codes, and local data.
+- **No secrets in the repo.** Credentials come from the environment (a root-only file on the VM, Bedrock from the AWS credential chain). `.gitignore` covers `.env`, generated links and codes, and local data.
 
 ## The design
 
@@ -181,7 +184,7 @@ Engine property tests run against an in-memory fake sandbox that implements the 
 
 Done:
 
-- The engine, three hauntings, the sandbox, the game server, the player UI and Daemonwatch, with 263 tests.
+- The engine, three hauntings, the sandbox, the game server, the player UI and Daemonwatch, with 268 tests.
 - All three hauntings pass the bot playtest against the real sandbox: the evidence appears, the documented fix verifies, and the sandbox recovers.
 - Hosted 24/7 on Azure at one permanent HTTPS address, and it comes back on its own after a reboot.
 

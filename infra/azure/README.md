@@ -1,10 +1,10 @@
 # Hosting Witching Hour 24/7 on Azure (Azure for Students)
 
-One small Ubuntu VM runs everything: the Docker sandbox, the game server, and Caddy in front with a free HTTPS certificate, all behind an access code. Your PC can be off. (Setup first starts a Cloudflare Quick Tunnel so you can try it straight away; the permanent address below replaces it.)
+One small Ubuntu VM runs everything: the Docker sandbox, the game server, and Caddy in front with a free HTTPS certificate. Your PC can be off. (Setup first starts a Cloudflare Quick Tunnel so you can try it straight away; the permanent address below replaces it.)
 
 - **Size:** `Standard_B2als_v2` (2 vCPU, 4 GB). Roughly $30/month of student credit, including a Standard SSD and a public IP. (`Standard_B2s` was sold out in East Asia; any 2 vCPU / 4 GB size works. List what's available with `az vm list-skus --location eastasia --resource-type virtualMachines --output table`.)
 - **Only the web ports are open** (80 and 443, to Caddy). Everything else, including SSH, stays closed; the VM is managed with `az vm run-command`.
-- **Self-healing.** The `witching-hour` systemd service restarts after crashes and reboots. With the permanent address below, the URL and the access code never change.
+- **Self-healing.** The `witching-hour` systemd service restarts after crashes and reboots. With the permanent address below, the URL never changes.
 
 ## Create it
 
@@ -40,13 +40,18 @@ az vm run-command invoke -g witching-hour -n witching-hour --command-id RunShell
   --scripts "cd /opt/witching-hour && sudo -u witch git pull --ff-only && bash infra/azure/stable-url.sh chaos-coven.eastasia.cloudapp.azure.com"
 ```
 
-The address is then `https://chaos-coven.eastasia.cloudapp.azure.com` (the DNS name, plus your region). [`stable-url.sh`](stable-url.sh) installs Caddy, which gets and renews a free Let's Encrypt certificate, redirects HTTP to HTTPS, and hides its own Server and Via headers. The access code, the game's security headers and the `/mcp` block all still apply. The address survives restarts, reboots and redeploys; it only goes away if you delete the public IP or the resource group.
+The address is then `https://chaos-coven.eastasia.cloudapp.azure.com` (the DNS name, plus your region). [`stable-url.sh`](stable-url.sh) installs Caddy, which gets and renews a free Let's Encrypt certificate, redirects HTTP to HTTPS, and hides its own Server and Via headers. The game's security headers, the `/mcp` block and the access code (if you keep it) all still apply. The address survives restarts, reboots and redeploys; it only goes away if you delete the public IP or the resource group.
 
-## The access code
+## Open to everyone, or behind a code
+
+Setup creates an access code in `/etc/witching-hour.env`. To make the game open to anyone with the link (no password), comment the code out and restart:
 
 ```powershell
-az vm run-command invoke -g witching-hour -n witching-hour --command-id RunShellScript --scripts "cat /etc/witching-hour.env"
+az vm run-command invoke -g witching-hour -n witching-hour --command-id RunShellScript `
+  --scripts "sed -i 's/^WH_ACCESS_CODE=/# WH_ACCESS_CODE=/' /etc/witching-hour.env && systemctl restart witching-hour"
 ```
+
+Without a code, each shift still belongs only to the browser that started it, and a shift whose page was closed ends after 5 minutes. To turn the code back on, run the same command with the `sed` reversed (`s/^# WH_ACCESS_CODE=/WH_ACCESS_CODE=/`). To read the code: `--scripts "cat /etc/witching-hour.env"`.
 
 ## Day to day
 

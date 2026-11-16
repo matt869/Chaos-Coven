@@ -17,6 +17,9 @@ const defaults = {
   // A session ends and reverts on its own after 20 minutes, so a judge who walks
   // away never blocks the sandbox for long.
   WH_SESSION_MAX_MINUTES: '20',
+  // The player page checks in every 5 seconds. If it stops for 5 minutes (the tab was
+  // closed), the shift ends and the sandbox is free for the next player.
+  WH_SESSION_IDLE_MINUTES: '5',
   WH_GRAFANA_URL: '/grafana',
 };
 

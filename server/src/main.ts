@@ -40,6 +40,7 @@ const sessions = new SessionManager({
   },
   timeScale: Number(env.WH_TIME_SCALE ?? 1),
   maxMinutes: Number(env.WH_SESSION_MAX_MINUTES ?? 45),
+  idleMinutes: Number(env.WH_SESSION_IDLE_MINUTES ?? 0),
   log,
 });
 

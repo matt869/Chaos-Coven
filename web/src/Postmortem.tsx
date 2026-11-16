@@ -59,7 +59,8 @@ export function Postmortem({ pm, onAgain }: { pm: PM; onAgain: () => void }) {
         {s.total >= 85 && <CandyShower />}
         <p className="closing">{pm.closing}</p>
         <p className="muted data">
-          {pm.endedBecause === 'timeout' ? 'time ran out' : 'shift ended'} after {formatDuration(duration)}
+          {pm.endedBecause === 'timeout' ? 'time ran out' : pm.endedBecause === 'idle' ? 'the page was closed, so the shift ended' : 'shift ended'} after{' '}
+          {formatDuration(duration)}
           {pm.hintsUsed > 0 && ` · ${pm.hintsUsed} hint${pm.hintsUsed === 1 ? '' : 's'}`}
           {causes.length > 0 && ` · ${causes.length - missedCauses}/${causes.length} cause signals checked`}
         </p>

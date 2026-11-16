@@ -4,7 +4,9 @@ import { createServer, request as httpRequest, type IncomingMessage, type Server
 import { extname, join, normalize, resolve, sep } from 'node:path';
 import { WebSocketServer, type WebSocket } from 'ws';
 import { validateDrill, type DrillStore } from '../drills/drills.js';
-import type { AccessGate } from './access.js';
+import { randomBytes } from 'node:crypto';
+import { readCookie, type AccessGate } from './access.js';
+import { isHttps, isLocalOperator } from './client.js';
 import { setSecurityHeaders } from './security.js';
 import { SessionError, type SessionManager } from '../session/session.js';
 
@@ -37,7 +39,14 @@ class HttpError extends Error {
 }
 
 type Json = Record<string, unknown> | unknown[] | null;
-type Handler = (params: Record<string, string>, body: unknown) => Promise<{ status?: number; body: Json }>;
+type Handler = (params: Record<string, string>, body: unknown, req: IncomingMessage) => Promise<{ status?: number; body: Json; headers?: Record<string, string> }>;
+
+/**
+ * The cookie that says "this browser started the running shift". Only that browser
+ * (or a local operator, see isLocalOperator) can see or drive the shift, so the game
+ * is safe to host without an access code: other visitors are told someone is on call.
+ */
+export const SHIFT_COOKIE = 'wh_shift';
 
 const MIME: Record<string, string> = {
   '.woff2': 'font/woff2',
@@ -77,31 +86,60 @@ export function createApp(opts: AppOptions): Server {
   };
   const str = (v: unknown) => (typeof v === 'string' ? v : undefined);
 
+  /** May this request see or drive the session? Also counts as "the player is still here". */
+  const canUse = (req: IncomingMessage, id: string): boolean => {
+    sessions.get(id); // 404 for unknown ids
+    const ok = isLocalOperator(req) || sessions.ownedBy(id, readCookie(req.headers.cookie, SHIFT_COOKIE));
+    if (ok) sessions.touch(id);
+    return ok;
+  };
+  const own = (req: IncomingMessage, id: string): string => {
+    if (!canUse(req, id)) throw new HttpError(403, 'This shift belongs to another player.');
+    return id;
+  };
+  /** Starts a session owned by this browser: the secret goes back as an HttpOnly cookie. */
+  const startOwned = async (req: IncomingMessage, hauntingId: string, meta: { player?: string; drillId?: string }) => {
+    const owner = randomBytes(32).toString('hex');
+    const view = await sessions.start(hauntingId, { ...meta, owner });
+    const secure = isHttps(req) ? '; Secure' : '';
+    return {
+      status: 201,
+      body: { ...view },
+      headers: { 'set-cookie': `${SHIFT_COOKIE}=${owner}; Path=/api/sessions; HttpOnly; SameSite=Strict${secure}` },
+    };
+  };
+
   on('GET', '/api/health', async () => ({ body: { ok: true } }));
   on('GET', '/api/config', async () => ({ body: { grafanaUrl: opts.grafanaUrl } }));
   on('GET', '/api/hauntings', async () => ({ body: sessions.hauntings() }));
 
-  on('POST', '/api/sessions', async (_p, body) => {
+  on('POST', '/api/sessions', async (_p, body, req) => {
     const b = body as { hauntingId?: unknown; player?: unknown };
     const hauntingId = str(b.hauntingId);
     if (hauntingId === undefined) throw new HttpError(400, 'hauntingId is required');
-    return { status: 201, body: { ...(await sessions.start(hauntingId, { player: str(b.player)?.slice(0, 40) })) } };
+    return startOwned(req, hauntingId, { player: str(b.player)?.slice(0, 40) });
   });
-  on('GET', '/api/sessions/active', async () => ({ body: (sessions.active() as unknown as Json) ?? null }));
-  on('GET', '/api/sessions/:id', async ({ id }) => ({ body: { ...sessions.view(id!) } }));
-  on('POST', '/api/sessions/:id/command', async ({ id }, body) => {
+  // Only the player who owns the running shift gets it back (for example after a reload).
+  on('GET', '/api/sessions/active', async (_p, _b, req) => {
+    const active = sessions.active();
+    return { body: active !== undefined && canUse(req, active.id) ? { ...active } : null };
+  });
+  on('GET', '/api/sessions/:id', async ({ id }, _b, req) => ({ body: { ...sessions.view(own(req, id!)) } }));
+  on('POST', '/api/sessions/:id/command', async ({ id }, body, req) => {
+    own(req, id!);
     const line = str((body as { line?: unknown }).line);
     if (line === undefined) throw new HttpError(400, 'line is required');
     return { body: await sessions.command(id!, line) };
   });
-  on('POST', '/api/sessions/:id/hint', async ({ id }) => ({ body: { hint: await sessions.hint(id!) } }));
-  on('POST', '/api/sessions/:id/diagnose', async ({ id }, body) => {
+  on('POST', '/api/sessions/:id/hint', async ({ id }, _b, req) => ({ body: { hint: await sessions.hint(own(req, id!)) } }));
+  on('POST', '/api/sessions/:id/diagnose', async ({ id }, body, req) => {
+    own(req, id!);
     const b = body as { component?: unknown; summary?: unknown };
     return { body: { ...sessions.diagnose(id!, { component: str(b.component) ?? '', summary: str(b.summary) ?? '' }) } };
   });
-  on('POST', '/api/sessions/:id/verify', async ({ id }) => ({ body: { ...(await sessions.verify(id!)) } }));
-  on('POST', '/api/sessions/:id/end', async ({ id }) => ({ body: { ...(await sessions.end(id!, 'player')) } }));
-  on('GET', '/api/sessions/:id/postmortem', async ({ id }) => ({ body: { ...sessions.postmortem(id!) } }));
+  on('POST', '/api/sessions/:id/verify', async ({ id }, _b, req) => ({ body: { ...(await sessions.verify(own(req, id!))) } }));
+  on('POST', '/api/sessions/:id/end', async ({ id }, _b, req) => ({ body: { ...(await sessions.end(own(req, id!), 'player')) } }));
+  on('GET', '/api/sessions/:id/postmortem', async ({ id }, _b, req) => ({ body: { ...sessions.postmortem(own(req, id!)) } }));
 
   on('GET', '/api/drills', async () => ({ body: await drills.list() }));
   on('POST', '/api/drills', async (_p, body) => {
@@ -123,13 +161,13 @@ export function createApp(opts: AppOptions): Server {
     if (d === undefined) throw new HttpError(404, 'unknown drill');
     return { body: { ...d } };
   });
-  on('POST', '/api/drills/:id/start', async ({ id }, body) => {
+  on('POST', '/api/drills/:id/start', async ({ id }, body, req) => {
     const d = await drills.get(id!);
     if (d === undefined) throw new HttpError(404, 'unknown drill');
     if (d.status === 'cancelled') throw new HttpError(409, 'this drill was cancelled');
     const player = str((body as { player?: unknown }).player);
     if (player === undefined || !d.players.includes(player)) throw new HttpError(400, 'player is not part of this drill');
-    return { status: 201, body: { ...(await sessions.start(d.hauntingId, { player, drillId: d.id })) } };
+    return startOwned(req, d.hauntingId, { player, drillId: d.id });
   });
 
   // Record drill results when a drill session ends.
@@ -178,9 +216,9 @@ export function createApp(opts: AppOptions): Server {
     void (async () => {
       const url = new URL(req.url ?? '/', 'http://localhost');
       const method = req.method ?? 'GET';
-      const send = (status: number, body: Json) => {
+      const send = (status: number, body: Json, headers: Record<string, string> = {}) => {
         setSecurityHeaders(res, 'api');
-        res.writeHead(status, { 'content-type': 'application/json' });
+        res.writeHead(status, { ...headers, 'content-type': 'application/json' });
         res.end(JSON.stringify(body));
       };
       try {
@@ -201,8 +239,8 @@ export function createApp(opts: AppOptions): Server {
             if (m === null) continue;
             const params = Object.fromEntries(r.keys.map((k, i) => [k, decodeURIComponent(m[i + 1]!)]));
             const body = method === 'GET' || method === 'DELETE' ? {} : await readJson(req);
-            const result = await r.handler(params, body);
-            return send(result.status ?? 200, result.body);
+            const result = await r.handler(params, body, req);
+            return send(result.status ?? 200, result.body, result.headers);
           }
           return send(404, { error: 'not found' });
         }
@@ -232,7 +270,7 @@ export function createApp(opts: AppOptions): Server {
     if (m === null) return socket.destroy();
     const id = decodeURIComponent(m[1]!);
     try {
-      sessions.view(id);
+      if (!canUse(req, id)) return socket.destroy();
     } catch {
       return socket.destroy();
     }
@@ -265,6 +303,7 @@ function attachTerminal(ws: WebSocket, sessionId: string, sessions: SessionManag
     // Commands run one at a time, in order.
     busy = busy.then(async () => {
       try {
+        sessions.touch(sessionId);
         const r = await sessions.command(sessionId, l);
         send({ type: 'output', ok: r.ok, text: r.output });
       } catch (err) {

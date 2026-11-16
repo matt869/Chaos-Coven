@@ -74,7 +74,7 @@ export class ManualTimers implements Timers {
   }
 }
 
-export async function setup(opts: { narrator?: Narrator; now?: { t: number } } = {}) {
+export async function setup(opts: { narrator?: Narrator; now?: { t: number }; idleMinutes?: number } = {}) {
   const { hauntings, invalid } = await loadHauntings(HAUNTINGS_DIR);
   if (invalid.length > 0) throw new Error(`invalid hauntings: ${JSON.stringify(invalid)}`);
   const sandbox = new FakeSandbox();
@@ -89,6 +89,7 @@ export async function setup(opts: { narrator?: Narrator; now?: { t: number } } =
     exec: { control, observability },
     clock: () => now.t,
     timers,
+    idleMinutes: opts.idleMinutes,
   });
   return { sandbox, engine, control, observability, timers, sessions, now };
 }

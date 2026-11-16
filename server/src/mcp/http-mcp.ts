@@ -4,9 +4,8 @@ import type { Engine } from '@witching-hour/engine';
 import { createMcpServer } from '@witching-hour/engine/mcp';
 import { z } from 'zod';
 import type { DrillStore } from '../drills/drills.js';
+import { isLocalOperator } from '../http/client.js';
 import type { SessionManager } from '../session/session.js';
-
-const LOOPBACK = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
 
 export interface McpHttpOptions {
   engine: Engine;
@@ -31,10 +30,9 @@ export function createMcpHttpHandler(opts: McpHttpOptions): (req: IncomingMessag
   const origins = hosts.map((h) => `http://${h}`);
 
   return async (req, res, body) => {
-    // A tunnel (cloudflared) connects from loopback too, so also refuse anything that
-    // was forwarded: MCP can apply hauntings and must never be public.
-    const forwarded = ['cf-connecting-ip', 'cf-ray', 'x-forwarded-for', 'forwarded'].some((h) => req.headers[h] !== undefined);
-    if (forwarded || !LOOPBACK.has(req.socket.remoteAddress ?? '')) {
+    // A tunnel or Caddy connects from loopback too, so anything forwarded is refused:
+    // MCP can apply hauntings and must never be public.
+    if (!isLocalOperator(req)) {
       res.writeHead(403, { 'content-type': 'application/json' }).end(JSON.stringify({ error: 'MCP is only served to loopback clients' }));
       return;
     }

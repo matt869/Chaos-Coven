@@ -70,6 +70,50 @@ describe('SessionManager with the-vanishing', () => {
     expect(sandbox.snapshot()).toBe(baseline);
   });
 
+  it('ends a session whose page stopped checking in, and frees the sandbox', async () => {
+    // 7 minutes: no escalation step of the-vanishing lands on exactly that delay.
+    const { sessions, sandbox, timers } = await setup({ idleMinutes: 7 });
+    const baseline = sandbox.snapshot();
+    const view = await sessions.start('the-vanishing');
+    const idleTimers = () => [...timers.pending.values()].filter((t) => t.ms === 7 * 60_000).length;
+    expect(idleTimers()).toBe(1);
+    // Checking in replaces the idle timer instead of stacking another.
+    sessions.touch(view.id);
+    sessions.touch(view.id);
+    expect(idleTimers()).toBe(1);
+
+    timers.fireUpTo(7 * 60_000);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(sessions.postmortem(view.id).endedBecause).toBe('idle');
+    expect(sessions.active()).toBeUndefined();
+    sandbox.settle();
+    expect(sandbox.snapshot()).toBe(baseline);
+    expect(timers.pending.size).toBe(0);
+  });
+
+  it('has no idle end unless it is configured', async () => {
+    const { sessions, timers } = await setup();
+    const view = await sessions.start('the-vanishing');
+    sessions.touch(view.id);
+    // Only the escalation steps and the 45-minute limit are scheduled.
+    const before = timers.pending.size;
+    sessions.touch(view.id);
+    expect(timers.pending.size).toBe(before);
+    expect([...timers.pending.values()].map((t) => t.ms).sort((a, b) => a - b)).toEqual([300_000, 600_000, 45 * 60_000]);
+    await sessions.end(view.id);
+  });
+
+  it('knows who owns a session', async () => {
+    const { sessions } = await setup();
+    const view = await sessions.start('the-vanishing', { owner: 'a'.repeat(64) });
+    expect(sessions.ownedBy(view.id, 'a'.repeat(64))).toBe(true);
+    expect(sessions.ownedBy(view.id, 'b'.repeat(64))).toBe(false);
+    expect(sessions.ownedBy(view.id, 'a')).toBe(false);
+    expect(sessions.ownedBy(view.id, undefined)).toBe(false);
+    await expect(sessions.start('the-vanishing')).rejects.toThrow(/Someone else is on call/);
+    await sessions.end(view.id);
+  });
+
   it('penalizes harmful commands', async () => {
     const { sessions, control } = await setup();
     const view = await sessions.start('the-vanishing');
@@ -83,7 +127,7 @@ describe('SessionManager with the-vanishing', () => {
     const { sessions } = await setup();
     await expect(sessions.start('nope')).rejects.toThrow(SessionError);
     const view = await sessions.start('the-vanishing');
-    await expect(sessions.start('slow-whisper')).rejects.toMatchObject({ status: 409, message: expect.stringMatching(/already on call.*ends on its own by \d\d:\d\d UTC/) });
+    await expect(sessions.start('slow-whisper')).rejects.toMatchObject({ status: 409, message: expect.stringMatching(/on call right now.*by \d\d:\d\d UTC at the latest/) });
     await sessions.end(view.id);
     const next = await sessions.start('slow-whisper');
     await sessions.end(next.id);

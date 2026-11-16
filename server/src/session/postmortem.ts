@@ -13,7 +13,7 @@ export interface Postmortem {
   player?: string;
   startedAt: number;
   endedAt: number;
-  endedBecause: 'player' | 'timeout' | 'shutdown';
+  endedBecause: 'player' | 'timeout' | 'shutdown' | 'idle';
   score: ScoreBreakdown;
   whatHappened: string;
   theFix: string;

@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import { isHttps } from './client.js';
 import { setSecurityHeaders } from './security.js';
 
 /**
@@ -83,7 +84,6 @@ export function createAccessGate(code: string, clock: () => number = Date.now): 
   const authorized = (req: IncomingMessage) => sameSecret(readCookie(req.headers.cookie, COOKIE) ?? '', token);
   const clientId = (req: IncomingMessage) => String(req.headers['cf-connecting-ip'] ?? req.socket.remoteAddress ?? 'unknown');
   const recentFailures = (id: string) => (failures.get(id) ?? []).filter((t) => clock() - t < FAILURE_WINDOW_MS);
-  const isHttps = (req: IncomingMessage) => req.headers['x-forwarded-proto'] === 'https' || String(req.headers['cf-visitor'] ?? '').includes('https');
 
   const html = (res: ServerResponse, status: number, body: string) => {
     setSecurityHeaders(res, 'html');

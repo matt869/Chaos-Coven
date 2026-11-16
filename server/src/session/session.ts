@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { randomUUID, timingSafeEqual } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import { scoreRun, type Engine, type Haunting, type PlayerAction, type VerifyResult } from '@witching-hour/engine';
 import type { Narrator } from '../narrator/bedrock.js';
@@ -31,6 +31,12 @@ export interface SessionOptions {
   timeScale?: number;
   /** Sessions end (and revert) on their own after this long. */
   maxMinutes?: number;
+  /**
+   * Sessions end (and revert) when nobody has checked in for this long. The player page
+   * checks in every few seconds, so this frees the sandbox when a tab is closed.
+   * Unset or 0: off.
+   */
+  idleMinutes?: number;
   /** Where operational problems are reported, such as an escalation step failing. */
   log?: (message: string) => void;
 }
@@ -52,6 +58,9 @@ interface Session {
   fixVerified: boolean;
   lastVerify?: { at: number; pass: boolean; checks: { id: string; description: string; pass: boolean; observed: number | null }[] };
   timers: unknown[];
+  idleTimer?: unknown;
+  /** A secret held by the browser that started the session. See ownedBy(). */
+  owner?: string;
   postmortem?: Postmortem;
 }
 
@@ -95,6 +104,7 @@ export class SessionManager extends EventEmitter {
   private readonly timers: Timers;
   private readonly timeScale: number;
   private readonly maxMs: number;
+  private readonly idleMs: number;
 
   constructor(private readonly opts: SessionOptions) {
     super();
@@ -102,6 +112,7 @@ export class SessionManager extends EventEmitter {
     this.timers = opts.timers ?? { setTimeout: (fn, ms) => setTimeout(fn, ms), clearTimeout: (h) => clearTimeout(h as never) };
     this.timeScale = opts.timeScale ?? 1;
     this.maxMs = (opts.maxMinutes ?? 45) * 60_000;
+    this.idleMs = Math.max(0, opts.idleMinutes ?? 0) * 60_000;
   }
 
   onEvent(fn: (e: SessionEvent) => void): () => void {
@@ -128,12 +139,20 @@ export class SessionManager extends EventEmitter {
     return this.activeId === undefined ? undefined : this.view(this.activeId);
   }
 
-  async start(hauntingId: string, meta: { player?: string; drillId?: string } = {}): Promise<SessionView> {
+  /**
+   * Starts a session. `owner` is a secret only the starting browser gets back (as a
+   * cookie); the HTTP layer uses ownedBy() so other visitors can't see or drive it.
+   */
+  async start(hauntingId: string, meta: { player?: string; drillId?: string; owner?: string } = {}): Promise<SessionView> {
     if (this.activeId !== undefined) {
-      const current = this.get(this.activeId);
-      const minutes = Math.max(0, Math.round((this.clock() - current.startedAt) / 60_000));
-      const endsBy = new Date(current.startedAt + this.maxMs).toISOString().slice(11, 16);
-      throw new SessionError(409, `someone is already on call in the sandbox (started ${minutes} min ago; it ends on its own by ${endsBy} UTC at the latest). Try again then.`);
+      const current = this.sessions.get(this.activeId);
+      const startedAt = current?.startedAt ?? this.clock();
+      const minutes = Math.max(0, Math.round((this.clock() - startedAt) / 60_000));
+      const endsBy = new Date(startedAt + this.maxMs).toISOString().slice(11, 16);
+      throw new SessionError(
+        409,
+        `Someone else is on call right now (their shift started ${minutes} min ago). There is one sandbox, so one player at a time: it frees up when they finish, or by ${endsBy} UTC at the latest.`,
+      );
     }
     let haunting: Haunting;
     try {
@@ -162,8 +181,10 @@ export class SessionManager extends EventEmitter {
         hintsUsed: 0,
         fixVerified: false,
         timers: [],
+        owner: meta.owner,
       };
       this.sessions.set(id, session);
+      this.armIdle(session);
       await this.narrate(session, 'page', applied.page.narration, [applied.page.alert]);
 
       for (const step of haunting.escalation) {
@@ -184,6 +205,27 @@ export class SessionManager extends EventEmitter {
     const s = this.sessions.get(id);
     if (s === undefined) throw new SessionError(404, 'unknown session');
     return s;
+  }
+
+  /** True when `token` is the secret the session was started with. Sessions started without one have no owner. */
+  ownedBy(id: string, token: string | undefined): boolean {
+    const owner = this.sessions.get(id)?.owner;
+    if (owner === undefined || token === undefined) return false;
+    const a = Buffer.from(owner);
+    const b = Buffer.from(token);
+    return a.length === b.length && timingSafeEqual(a, b);
+  }
+
+  /** The player is still there: push back the idle end. */
+  touch(id: string): void {
+    const s = this.sessions.get(id);
+    if (s?.status === 'active') this.armIdle(s);
+  }
+
+  private armIdle(s: Session): void {
+    if (this.idleMs === 0) return;
+    if (s.idleTimer !== undefined) this.timers.clearTimeout(s.idleTimer);
+    s.idleTimer = this.timers.setTimeout(() => void this.end(s.id, 'idle').catch(() => undefined), this.idleMs);
   }
 
   view(id: string): SessionView {
@@ -272,12 +314,14 @@ export class SessionManager extends EventEmitter {
     if (s.status === 'ended' && s.postmortem) return s.postmortem;
     s.status = 'ended';
     for (const t of s.timers) this.timers.clearTimeout(t);
+    if (s.idleTimer !== undefined) this.timers.clearTimeout(s.idleTimer);
     if (this.activeId === id) this.activeId = undefined;
     try {
       await this.opts.engine.revert(s.haunting.id);
     } finally {
       const endedAt = this.clock();
-      s.timeline.push({ at: endedAt, type: 'end', text: because === 'player' ? 'session ended by the player' : `session ended (${because})` });
+      const endText = { player: 'session ended by the player', timeout: 'session ended (time limit)', shutdown: 'session ended (server shutdown)', idle: 'session ended (the player left)' }[because];
+      s.timeline.push({ at: endedAt, type: 'end', text: endText });
       const score = scoreRun(s.haunting, {
         hauntingId: s.haunting.id,
         startedAt: s.startedAt,
